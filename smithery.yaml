@@ -1,0 +1,24 @@
+name: lore
+displayName: lore -- Local Document Knowledge Base
+description: >
+  Index any documents locally -- PDF, DOCX, HTML, email, source code,
+  90+ formats -- and search them from Claude, Cursor, or any MCP client.
+  No embeddings, no cloud, no API keys. BM25 full-text search via a
+  single binary.
+homepage: https://github.com/timorunge/lore
+license: MIT
+categories:
+  - knowledge
+  - search
+  - documents
+config:
+  - name: LORE_CONFIG
+    description: Absolute path to your lore.yaml config file
+    required: true
+    type: string
+startCommand:
+  type: stdio
+  command: lore
+  args: ["serve"]
+  env:
+    LORE_CONFIG: "{{LORE_CONFIG}}"

@@ -1,0 +1,186 @@
+name: Lint and Test
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -W dead_code -W unused_imports -W unused_variables -W unused_mut
+
+jobs:
+  conventions:
+    name: Conventions
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - run: scripts/lint-conventions.sh
+
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt -- --check
+
+  clippy:
+    name: Clippy (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        id: toolchain
+        with:
+          components: clippy
+      - name: Install cmake (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y cmake
+      - name: Install cmake (macOS)
+        if: runner.os == 'macOS'
+        run: brew install cmake 2>/dev/null || true
+      - uses: actions/cache@v5
+        if: ${{ !env.ACT }}
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ steps.toolchain.outputs.cachekey }}-
+      - name: Clippy (default features)
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Clippy (no default features)
+        run: cargo clippy --all-targets --no-default-features --workspace -- -D warnings
+      - name: Clippy (all features)
+        if: runner.os != 'Windows'
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Clippy (all features, no OCR)
+        if: runner.os == 'Windows'
+        run: cargo clippy --all-targets --features ingest,mcp,llm,s3,iwork,tree-sitter -- -D warnings
+
+  doc:
+    name: Docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        id: toolchain
+      - name: Install cmake
+        run: sudo apt-get update && sudo apt-get install -y cmake
+      - uses: actions/cache@v5
+        if: ${{ !env.ACT }}
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ steps.toolchain.outputs.cachekey }}-
+      - run: cargo doc --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        id: toolchain
+      - name: Install cmake (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y cmake
+      - name: Install cmake (macOS)
+        if: runner.os == 'macOS'
+        run: brew install cmake 2>/dev/null || true
+      - uses: actions/cache@v5
+        if: ${{ !env.ACT }}
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ steps.toolchain.outputs.cachekey }}-
+      - name: Test (default features)
+        run: cargo test
+      - name: Test (no default features)
+        run: cargo test --no-default-features --workspace
+      - name: Test (all features)
+        if: runner.os != 'Windows'
+        run: cargo test --all-features
+      - name: Test (all features, no OCR)
+        if: runner.os == 'Windows'
+        run: cargo test --features ingest,mcp,llm,s3,iwork,tree-sitter
+
+  fuzz:
+    name: Fuzz smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      RUSTFLAGS: ""
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
+        id: toolchain
+      - name: Install cmake, clang, and lld
+        run: sudo apt-get update && sudo apt-get install -y cmake clang lld
+      - name: Install cargo-fuzz
+        run: cargo install cargo-binstall --locked && cargo binstall cargo-fuzz --no-confirm
+      - uses: actions/cache@v5
+        if: ${{ !env.ACT }}
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+            fuzz/target
+          key: ${{ runner.os }}-fuzz-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-fuzz-${{ steps.toolchain.outputs.cachekey }}-
+      - name: Configure linker for fuzzing
+        if: ${{ !env.ACT }}
+        run: |
+          target=$(rustc -vV | awk '/^host:/ {print $2}' | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+          printf '#!/bin/sh\nexec clang -fuse-ld=lld "$@"\n' | sudo tee /usr/local/bin/fuzz-linker > /dev/null
+          sudo chmod +x /usr/local/bin/fuzz-linker
+          echo "CARGO_TARGET_${target}_LINKER=fuzz-linker" >> "$GITHUB_ENV"
+      - name: Set sanitizer flag for act
+        if: ${{ env.ACT }}
+        run: echo "FUZZ_SANITIZER=-s none" >> "$GITHUB_ENV"
+      - name: Detect host target
+        id: host
+        run: echo "triple=$(rustc -vV | awk '/^host:/ {print $2}')" >> "$GITHUB_OUTPUT"
+      - name: Fuzz sanitize_query (30s)
+        run: cargo fuzz run fuzz_sanitize_query $FUZZ_SANITIZER --target ${{ steps.host.outputs.triple }} -- -max_total_time=30
+      - name: Fuzz visible_width (30s)
+        run: cargo fuzz run fuzz_visible_width $FUZZ_SANITIZER --target ${{ steps.host.outputs.triple }} -- -max_total_time=30
+      - name: Fuzz config_parse (30s)
+        run: cargo fuzz run fuzz_config_parse $FUZZ_SANITIZER --target ${{ steps.host.outputs.triple }} -- -max_total_time=30
+      - name: Fuzz chunker (30s)
+        run: cargo fuzz run fuzz_chunker $FUZZ_SANITIZER --target ${{ steps.host.outputs.triple }} -- -max_total_time=30

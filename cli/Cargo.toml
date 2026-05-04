@@ -1,0 +1,74 @@
+[package]
+name = "lore-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+license = "MIT"
+description = "CLI and terminal interface for lore: ingest, search, and serve knowledge bases"
+repository = "https://github.com/timorunge/lore"
+homepage = "https://github.com/timorunge/lore"
+keywords = ["knowledge-base", "search", "cli", "mcp"]
+categories = ["command-line-utilities"]
+publish = false
+
+[package.metadata.dist]
+dist = true
+
+[features]
+default = ["ingest", "ocr", "mcp"]
+ingest = ["lore/ingest"]
+llm = ["lore/llm", "ingest"]
+mcp = ["lore/mcp"]
+s3 = ["lore/s3", "ingest"]
+ocr = ["lore/ocr", "ingest"]
+iwork = ["lore/iwork", "ingest"]
+tree-sitter = ["lore/tree-sitter", "ingest"]
+test-support = ["lore/test-support"]
+
+[dependencies]
+lore = { path = "..", default-features = false }
+clap = { version = "4", features = ["derive", "env"] }
+clap_complete = "4"
+anyhow = "1"
+tokio = { version = "1", features = ["full"] }
+indicatif = "0.18"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+notify = "8"
+rmcp = { version = "1.4", features = ["server", "transport-io", "transport-streamable-http-server", "macros"] }
+axum = { version = "0.8", features = ["http1", "tokio"] }
+tokio-util = "0.7"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+ignore = "0.4"
+
+[dev-dependencies]
+lore = { path = "..", features = ["test-support"] }
+assert_cmd = "2"
+predicates = "3"
+serial_test = "3"
+tempfile = "3"
+wiremock = "0.6"
+flate2 = "1"
+tar = "0.4"
+zip = { version = "8", default-features = false, features = ["deflate"] }
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+tikv-jemallocator = "0.6"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_System_Console", "Win32_Foundation"] }
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "lore"
+path = "src/main.rs"
+
+[lib]
+name = "lore_cli"
+path = "src/lib.rs"

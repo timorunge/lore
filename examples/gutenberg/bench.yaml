@@ -1,0 +1,45 @@
+# Gutenberg benchmark config -- optimized for --recreate throughput.
+#
+# Download the full plain-text archive (~11 GB compressed, 76K+ books),
+# extract, and ingest:
+#
+#   curl -O https://www.gutenberg.org/cache/epub/feeds/txt-files.tar.zip
+#   mkdir -p ~/gutenberg && unzip txt-files.tar.zip && tar xf txt-files.tar -C ~/gutenberg
+#   lore --config examples/gutenberg/bench.yaml ingest --recreate
+#
+# Tuning rationale:
+#   concurrency 10       -- saturate cores (chunking is CPU-bound)
+#   commit_interval 60   -- moderate commits; gives LogMergePolicy time to compact
+#   max_chunk_chars 5000 -- fewer, larger chunks; less Tantivy index overhead
+#   writer_heap_mb 2048  -- 8× fewer segment flushes -> less merge contention
+#   phrase_search false  -- skip positional data; ~30% smaller index, faster writes
+#   pipeline kept        -- realistic workload (metadata extraction + boilerplate strip)
+
+name: gutenberg-bench
+description: Gutenberg full-archive performance benchmark
+
+sources:
+  - path: ~/gutenberg/cache/epub
+    glob: "**/*.txt"
+
+store:
+  path: ./bench-store
+  writer_heap_mb: 2048
+  phrase_search: false
+
+processing:
+  concurrency: 10
+  commit_interval: 60
+  max_chunk_chars: 5000
+  extract: none
+  pipeline:
+    - type: extract_builtin
+    - type: extract_metadata
+      pattern: 'Title:\s+(.+?)(?:\s+\[.+\])?$'
+      field: topic
+    - type: replace_text
+      pattern: '(?s)^.*?\*\*\* START OF THE PROJECT GUTENBERG EBOOK[^\n]*\n'
+      replacement: ""
+    - type: replace_text
+      pattern: '(?s)\*\*\* END OF THE PROJECT GUTENBERG EBOOK.*'
+      replacement: ""

@@ -1,0 +1,38 @@
+name: Bug Report
+description: Report a bug in lore
+labels: [bug]
+body:
+  - type: checkboxes
+    id: existing
+    attributes:
+      label: Pre-flight
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps or config to reproduce the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: "OS, lore version (`lore --version`), Rust version (`rustc --version`)."
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / output
+      description: Relevant output, error messages, or `RUST_LOG=debug` traces.
+      render: text

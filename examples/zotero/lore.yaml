@@ -1,0 +1,28 @@
+name: zotero
+description: >-
+  Research paper library managed by Zotero. Indexes all PDFs from
+  Zotero's local storage directory, including scanned papers via
+  built-in OCR. Drop sections strips citation lists and boilerplate
+  to keep search results focused on substance.
+
+sources:
+  # Zotero stores attachments in ~/Zotero/storage/<8-char-key>/<file>.pdf
+  # Adjust the path if you use a custom Zotero data directory.
+  - path: ~/Zotero/storage
+    glob: "**/*.pdf"
+    topic: Papers
+
+store:
+  path: ./store
+
+processing:
+  drop_sections:
+    - References
+    - Bibliography
+    - Acknowledgements
+    - Acknowledgments
+    - Funding
+  content_filter:
+    strip_repeating_text: true
+    include_headers: false
+    include_footers: false

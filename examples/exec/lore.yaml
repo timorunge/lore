@@ -1,0 +1,14 @@
+name: exec-example
+description: >-
+  Demonstrates the exec source type. Runs a local Python script that
+  generates JSONL documents from a static dataset.
+
+base_dir: ../..
+
+sources:
+  - exec: python3 examples/exec/generate_docs.py
+    topic: Demo
+    timeout_secs: 30
+
+store:
+  path: ./store

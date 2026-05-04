@@ -1,0 +1,41 @@
+name: gutenberg
+description: >-
+  Project Gutenberg books. Combines an RSS feed of recently posted or
+  updated ebooks with direct downloads of classic texts.
+
+sources:
+  # Daily feed of new and updated ebooks (regenerated nightly).
+  # Links point to HTML catalog pages -- kreuzberg extracts the text.
+  - feed: https://www.gutenberg.org/cache/epub/feeds/today.rss
+    topic: Recent
+
+  # Classic texts as plain-text downloads.
+  - url:
+      - https://www.gutenberg.org/cache/epub/2701/pg2701.txt # Moby Dick
+      - https://www.gutenberg.org/cache/epub/2097/pg2097.txt # The Sign of the Four
+      - https://www.gutenberg.org/cache/epub/1661/pg1661.txt # Sherlock Holmes
+      - https://www.gutenberg.org/cache/epub/11/pg11.txt # Alice in Wonderland
+      - https://www.gutenberg.org/cache/epub/84/pg84.txt # Frankenstein
+      - https://www.gutenberg.org/cache/epub/1342/pg1342.txt # Pride and Prejudice
+      - https://www.gutenberg.org/cache/epub/76/pg76.txt # Huckleberry Finn
+      - https://www.gutenberg.org/cache/epub/1232/pg1232.txt # The Prince
+      - https://www.gutenberg.org/cache/epub/174/pg174.txt # The Picture of Dorian Gray
+      - https://www.gutenberg.org/cache/epub/345/pg345.txt # Dracula
+    # topic extracted from each book's Title: header via pipeline
+
+store:
+  path: ./store
+
+processing:
+  extract: none
+  pipeline:
+    - type: extract_builtin
+    - type: extract_metadata
+      pattern: 'Title:\s+(.+?)(?:\s+\[.+\])?$'
+      field: topic
+    - type: replace_text
+      pattern: '(?s)^.*?\*\*\* START OF THE PROJECT GUTENBERG EBOOK[^\n]*\n'
+      replacement: ""
+    - type: replace_text
+      pattern: '(?s)\*\*\* END OF THE PROJECT GUTENBERG EBOOK.*'
+      replacement: ""

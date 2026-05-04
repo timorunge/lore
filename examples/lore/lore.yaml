@@ -1,0 +1,21 @@
+name: lore
+description: >-
+  lore and kreuzberg -- project documentation from a local checkout
+  alongside the upstream document extraction library.
+
+base_dir: ../..
+
+sources:
+  # lore -- documentation (local checkout)
+  - path:
+      - ./README.md
+      - ./docs
+    glob: "**/*.md"
+
+  # kreuzberg -- documentation (git)
+  - git: https://github.com/kreuzberg-dev/kreuzberg.git
+    glob: "docs/**/*.md"
+    topic: kreuzberg
+
+store:
+  path: ./store

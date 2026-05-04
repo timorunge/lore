@@ -1,0 +1,7 @@
+.lore
+target
+fuzz/artifacts
+fuzz/corpus
+fuzz/target
+examples/*/store
+examples/*/bench-store

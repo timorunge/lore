@@ -1,0 +1,18 @@
+name: youtube
+description: >-
+  Educational YouTube videos demonstrating transcript ingestion.
+  Fetches captions via yt-dlp and indexes the full transcript text.
+
+sources:
+  # 3Blue1Brown: But what is a neural network? (CC-BY)
+  - youtube: https://www.youtube.com/watch?v=aircAruvnKk
+    lang: en
+    topic: Math
+
+  # Khan Academy: Introduction to the atom (educational, CC-BY-NC-SA)
+  - youtube: https://www.youtube.com/watch?v=1xSQlwWGT8M
+    lang: en
+    topic: Science
+
+store:
+  path: ./store

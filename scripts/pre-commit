@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -e
+make fmt
+make lint-conventions
+make lint
+make check-docs

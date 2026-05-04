@@ -1,0 +1,31 @@
+name: llm
+description: >-
+  Demonstrates LLM-powered enrichment using a local Ollama instance.
+  Chunks are scored for quality and annotated with summaries and keywords.
+
+sources:
+  - path: ./docs
+    glob: "**/*.md"
+
+store:
+  path: ./store
+
+# Requires: cargo install --path . --features llm  (not compiled in by default)
+# Requires: ollama running locally (ollama serve)
+# Requires: ollama pull llama3.2
+llm:
+  provider: ollama
+  ollama_model: llama3.2
+  ollama_url: http://localhost:11434
+
+  detect_topics:
+    enabled: true
+
+  summarize_docs:
+    enabled: true
+
+  enrich_chunks:
+    enabled: true
+    quality_threshold: 0.2
+    concurrency: 2
+

@@ -1,0 +1,43 @@
+[package]
+name = "lore-fuzz"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+serde_yaml_ng = "0.10"
+
+[dependencies.lore]
+path = ".."
+default-features = false
+features = ["ingest"]
+
+[[bin]]
+name = "fuzz_sanitize_query"
+path = "fuzz_targets/fuzz_sanitize_query.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_visible_width"
+path = "fuzz_targets/fuzz_visible_width.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_config_parse"
+path = "fuzz_targets/fuzz_config_parse.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_chunker"
+path = "fuzz_targets/fuzz_chunker.rs"
+test = false
+doc = false

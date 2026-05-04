@@ -1,0 +1,174 @@
+[workspace]
+members = [".", "cli", "xtask"]
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fuzzing)"] }
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"
+too_many_lines = "allow"
+doc_markdown = "allow"
+must_use_candidate = "allow"
+struct_excessive_bools = "allow"
+large_futures = "allow"
+implicit_hasher = "allow"
+
+[package]
+name = "lore"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+license = "MIT"
+description = "Knowledge base library: ingest, index, and search documents"
+repository = "https://github.com/timorunge/lore"
+homepage = "https://github.com/timorunge/lore"
+keywords = ["knowledge-base", "search", "bm25", "mcp", "tantivy"]
+categories = ["text-processing", "database"]
+publish = false
+
+[lints]
+workspace = true
+
+[features]
+default = []
+ingest = [
+    "dep:kreuzberg",
+    "dep:reqwest",
+    "dep:notify",
+    "dep:ignore",
+    "dep:globset",
+    "dep:fd-lock",
+    "dep:futures",
+    "dep:httpdate",
+    "dep:texting_robots",
+    "dep:quick-xml",
+    "dep:mail-parser",
+    "dep:mime_guess",
+    "dep:zip",
+    "dep:tar",
+    "dep:flate2",
+    "dep:zstd",
+    "dep:bzip2",
+    "dep:xz2",
+]
+llm = ["dep:aws-sdk-bedrockruntime", "dep:aws-config", "dep:reqwest", "dep:futures"]
+mcp = ["dep:rmcp"]
+s3 = ["dep:aws-sdk-s3", "dep:aws-config", "ingest"]
+ocr = ["kreuzberg/ocr", "ingest"]
+iwork = ["kreuzberg/iwork", "ingest"]
+tree-sitter = ["kreuzberg/tree-sitter", "ingest"]
+test-support = []
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = "1"
+serde_yaml_ng = "0.10"
+anyhow = "1"
+thiserror = "2"
+regex = "1"
+blake3 = "1"
+ignore = { version = "0.4", optional = true }
+globset = { version = "0.4", optional = true }
+schemars = "1.0"
+tantivy = { version = "0.26", features = ["zstd-compression"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+reqwest = { version = "0.13", features = ["json", "gzip", "brotli", "stream"], optional = true }
+url = "2"
+dirs = "6"
+quick-xml = { version = "0.39", optional = true }
+futures = { version = "0.3", optional = true }
+fd-lock = { version = "4", optional = true }
+notify = { version = "8", optional = true }
+httpdate = { version = "1", optional = true }
+texting_robots = { version = "0.2", optional = true }
+aws-config = { version = "1", default-features = false, features = ["behavior-version-latest", "default-https-client", "rt-tokio", "credentials-process", "sso"], optional = true }
+aws-sdk-bedrockruntime = { version = "1", default-features = false, features = ["default-https-client", "rt-tokio"], optional = true }
+aws-sdk-s3 = { version = "1", default-features = false, features = ["default-https-client", "rt-tokio"], optional = true }
+kreuzberg = { version = "4.9", default-features = false, optional = true, features = [
+    "tokio-runtime", "chunking",
+    # Document formats
+    "pdf", "bundled-pdfium", "office", "excel", "html", "xml", "email",
+    # Text quality (unicode normalization, charset detection)
+    "quality",
+    # Auto-detect document language
+    "language-detection",
+] }
+zip = { version = "8", default-features = false, features = ["deflate"], optional = true }
+tar = { version = "0.4", optional = true }
+flate2 = { version = "1", optional = true }
+zstd = { version = "0.13", optional = true }
+bzip2 = { version = "0.6", optional = true }
+xz2 = { version = "0.1", optional = true }
+rmcp = { version = "1.4", features = ["client", "transport-child-process", "transport-streamable-http-client-reqwest"], optional = true }
+mail-parser = { version = "0.11", optional = true }
+mime_guess = { version = "2", optional = true }
+tempfile = "3"
+bitcode = "0.6"
+unicode-width = "0.2"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[profile.release]
+lto = "thin"
+strip = true
+
+[profile.dist]
+inherits = "release"
+lto = "thin"
+codegen-units = 1
+
+[workspace.metadata.dist]
+cargo-dist-version = "0.31.0"
+ci = ["github"]
+installers = ["shell", "homebrew"]
+tap = "timorunge/homebrew-tap"
+publish-jobs = ["homebrew"]
+targets = [
+  "x86_64-unknown-linux-gnu",
+  "aarch64-unknown-linux-gnu",
+  "x86_64-apple-darwin",
+  "aarch64-apple-darwin",
+]
+unix-archive = ".tar.gz"
+checksum = "sha256"
+pr-run-mode = "plan"
+allow-dirty = ["ci"]
+
+[workspace.metadata.dist.dependencies.apt]
+cmake = "*"
+
+[workspace.metadata.dist.dependencies.homebrew]
+cmake = "*"
+
+[workspace.metadata.dist.dependencies.chocolatey]
+cmake = "*"
+
+[dev-dependencies]
+lore = { path = ".", version = "0.1.0", features = ["test-support"] }
+wiremock = "0.6"
+proptest = "1"
+serial_test = "3"
+criterion = { version = "0.8", features = ["html_reports"] }
+
+[[bench]]
+name = "sanitize_query"
+harness = false
+
+[[bench]]
+name = "visible_width"
+harness = false
+
+[[bench]]
+name = "chunker"
+harness = false
+required-features = ["ingest"]
