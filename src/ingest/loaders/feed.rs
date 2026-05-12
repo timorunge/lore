@@ -1,6 +1,6 @@
+use quick_xml::XmlVersion;
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
-use quick_xml::XmlVersion;
 use tracing::warn;
 
 /// Parse RSS/Atom XML and extract all article URLs from `<item>` or `<entry>` elements.
@@ -34,7 +34,10 @@ pub(crate) fn parse_feed_urls(xml: &str) -> Vec<String> {
                     b"link" if in_item_or_entry => {
                         for attr in e.attributes().flatten() {
                             if attr.key.as_ref() == b"href"
-                                && let Ok(val) = attr.decoded_and_normalized_value(XmlVersion::Implicit1_0, xml_decoder)
+                                && let Ok(val) = attr.decoded_and_normalized_value(
+                                    XmlVersion::Implicit1_0,
+                                    xml_decoder,
+                                )
                             {
                                 let url = val.trim().to_string();
                                 if !url.is_empty() {
