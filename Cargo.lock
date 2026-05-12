@@ -221,9 +221,9 @@ dependencies = [
 
 [[package]]
 name = "assert_cmd"
-version = "2.2.1"
+version = "2.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39bae1d3fa576f7c6519514180a72559268dd7d1fe104070956cb687bc6673bd"
+checksum = "2aa3a22042e45de04255c7bf3626e239f450200fd0493c1e382263544b20aea6"
 dependencies = [
  "anstyle",
  "bstr 1.12.1",
@@ -463,9 +463,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-s3"
-version = "1.131.0"
+version = "1.132.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe1b8c5282bf859170836045296b3cd710b7573aceb909498366bb508a41058e"
+checksum = "5575840a3a6b11f6011463ebe359320dfe5b67babb5e9b06fed6ddf809a9ab40"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
@@ -1191,7 +1191,7 @@ dependencies = [
  "encoding_rs",
  "fast-float2",
  "log",
- "quick-xml 0.39.3",
+ "quick-xml 0.39.4",
  "serde",
  "zip 7.2.0",
 ]
@@ -1378,9 +1378,9 @@ dependencies = [
 
 [[package]]
 name = "clap_complete"
-version = "4.6.3"
+version = "4.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "660c0520455b1013b9bcb0393d5f643d7e4454fb69c915b8d6d2aa0e9a45acc3"
+checksum = "e0a7a9bfdb35811f9e59832f0f05975114d2251b415fb534108e6f34060fd772"
 dependencies = [
  "clap",
 ]
@@ -3263,9 +3263,9 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg"
-version = "4.9.4"
+version = "4.9.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "075403eee3e430917b55b195ef90098c6252d737883eba38c80d2297deaccb08"
+checksum = "a9b6e7118097d06f882f62427e6d8722eef31bc20bd0b2f434a8b8785d05c30c"
 dependencies = [
  "ahash",
  "async-trait",
@@ -3313,7 +3313,7 @@ dependencies = [
  "pastey 0.2.2",
  "pkg-config",
  "pulldown-cmark",
- "quick-xml 0.39.3",
+ "quick-xml 0.39.4",
  "rayon",
  "regex",
  "rmp-serde",
@@ -3365,9 +3365,9 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-tesseract"
-version = "4.9.5"
+version = "4.9.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce3ea8bcf6118bc043da2b63d0e190595fddc48bd99416ccfb8cb10f9feef1c5"
+checksum = "550d1aedb28114013aa51767a1566318a7c6409b56605851c55c2ecd433ccf1b"
 dependencies = [
  "cc",
  "cmake",
@@ -3550,7 +3550,7 @@ dependencies = [
  "mime_guess",
  "notify",
  "proptest",
- "quick-xml 0.39.3",
+ "quick-xml 0.40.0",
  "regex",
  "reqwest",
  "rmcp",
@@ -4474,13 +4474,22 @@ dependencies = [
 
 [[package]]
 name = "quick-xml"
-version = "0.39.3"
+version = "0.39.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "721da970c312655cde9b4ffe0547f20a8494866a4af5ff51f18b7c633d0c870b"
+checksum = "cdcc8dd4e2f670d309a5f0e83fe36dfdc05af317008fea29144da1a2ac858e5e"
 dependencies = [
  "encoding_rs",
  "memchr",
  "serde",
+]
+
+[[package]]
+name = "quick-xml"
+version = "0.40.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b7315c86b26aaef0321fba33c9dcc160da659c6a9d278f0f6a5656d6561c03b"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
@@ -6030,9 +6039,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.52.2"
+version = "1.52.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "110a78583f19d5cdb2c5ccf321d1290344e71313c6c37d43520d386027d18386"
+checksum = "8fc7f01b389ac15039e4dc9531aa973a135d7a4135281b12d7c1bc79fd57fffe"
 dependencies = [
  "bytes",
  "libc",
