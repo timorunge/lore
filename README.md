@@ -23,13 +23,6 @@ Homebrew (macOS and Linux):
 brew install timorunge/tap/lore-cli
 ```
 
-With [cargo-binstall](https://github.com/cargo-bins/cargo-binstall)
-(downloads a pre-built binary, no build required):
-
-```bash
-cargo binstall --git https://github.com/timorunge/lore
-```
-
 Or download a pre-built binary directly from the
 [releases page](https://github.com/timorunge/lore/releases).
 

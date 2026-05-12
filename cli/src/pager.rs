@@ -61,11 +61,16 @@ fn pager_bin(cmd: &str) -> &str {
 /// pager) gracefully.
 fn run_pager(text: &str, cmd: &str) -> Result<()> {
     let bin = pager_bin(cmd);
-    if bin == "lore" {
+    let is_self = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .is_some_and(|name| name == bin);
+    if is_self {
         let paint = crate::terminal::stderr_painter();
         eprintln!(
-            "[{} ] pager is set to \"lore\" which would cause a loop, ignoring",
-            paint.yellow("!")
+            "[{} ] pager is set to {:?} which would cause a loop, ignoring",
+            paint.yellow("!"),
+            bin,
         );
         println!("{text}");
         return Ok(());

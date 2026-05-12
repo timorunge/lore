@@ -523,7 +523,7 @@ in the config file causes a validation error at startup.
 | Feed | `feed` | RSS or Atom feed URL(s). Fetches linked articles. `discard: true` removes old entries on update. |
 | YouTube | `youtube` | YouTube video, playlist, or channel URL(s). Fetches transcripts via `yt-dlp`. |
 | Maildir | `maildir` | Maildir directory (or directories). Indexes all messages in `new/` and `cur/`. |
-| Exec | `exec` | Command(s) to execute. stdout is read as JSONL; each line becomes a document. |
+| Exec | `exec` | Command(s) to execute. stdout is parsed as JSONL (default) or consumed as raw content. |
 | MCP | `mcp` | Upstream MCP server source. Connects to an MCP server and ingests resources and/or tool call results. Requires the `mcp` feature. |
 <!-- END GENERATED: enum-source-types -->
 
@@ -940,11 +940,23 @@ Freshness is checked via file mtime and size, same as local sources.
 ### Exec source
 
 ```yaml
-# single command
+# JSONL mode (default) — each stdout line is a JSON document
 - exec: ./scripts/fetch-notes.sh
   topic: Notes
 
-# multiple commands
+# raw mode — entire stdout becomes one document
+- exec: cat /etc/motd
+  output: raw
+  format: txt
+  topic: System
+
+# raw mode with explicit source key
+- exec: ./scripts/export-config.sh
+  output: raw
+  source_key: exported-config
+  format: yaml
+
+# multiple commands (JSONL mode)
 - exec:
     - python3 scripts/export-wiki.py
     - ./scripts/fetch-tickets.sh
@@ -960,12 +972,19 @@ Freshness is checked via file mtime and size, same as local sources.
   topic: External
 ```
 
-Runs one or more shell commands via `sh -c` and reads JSONL from stdout.
+Runs one or more shell commands via `sh -c`. Supports two output modes:
+
+- **`jsonl`** (default): each non-empty stdout line is parsed as a JSON
+  object with `source` and `content` fields.
+- **`raw`**: the entire stdout of each command becomes a single document.
 
 <!-- BEGIN GENERATED: config-source-exec -->
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `exec` | string or list | -- | Shell command(s) to run via `sh -c` (string or list). |
+| `output` | string | -- | Output mode: `jsonl` (default) or `raw`. In `raw` mode the entire stdout becomes a single document. |
+| `source_key` | string | -- | Stable identity key used as the document `source` in `raw` mode. Defaults to the command string when omitted. Ignored in `jsonl` mode. |
+| `format` | string | -- | Format hint for the document content (e.g. `"md"`, `"txt"`). In `raw` mode this tells the extractor how to parse the content. In `jsonl` mode it serves as a fallback when a line omits the `format` field. |
 | `dir` | string | -- | Working directory override (default: config base dir). Supports `~` and `$VAR`. |
 | `env` | map | -- | Extra environment variables passed to the subprocess. |
 | `timeout_secs` | int | -- | Per-source timeout in seconds (default: `processing.extraction_timeout_secs`). |
@@ -975,27 +994,29 @@ Runs one or more shell commands via `sh -c` and reads JSONL from stdout.
 | `processing` | string or object | -- | Processing override: a preset name or an inline profile object. |
 <!-- END GENERATED: config-source-exec -->
 
-Each non-empty stdout line must be a JSON object with at least `source`
-(a stable identity key) and `content` (the document text). Optional fields:
-`title`, `author`, `lang`, `created_at`, `tags`, `topic`.
+**JSONL mode** (default): each non-empty stdout line must be a JSON object
+with at least `source` (a stable identity key) and `content` (the document
+text). Optional fields: `title`, `author`, `lang`, `created_at`, `tags`,
+`format`, `kind`.
 
 ```json
 {"source": "notes/2026-01-01", "content": "Year in review...", "title": "Retrospective", "tags": ["annual", "review"]}
 {"source": "notes/2026-01-15", "content": "Project kickoff...", "title": "Kickoff", "lang": "en"}
 ```
 
-Commands run with `stdin` connected to `/dev/null`. Invalid JSON lines and
-lines missing `source` or `content` are logged as warnings and skipped. A
-non-zero exit code or timeout fails the entire source.
+**Raw mode**: the entire stdout is used as document content. The document
+`source` identity defaults to the command string, or set `source_key` for a
+stable key. When using multiple commands in raw mode, omit `source_key` so
+each command uses its own string as the identity.
+
+Commands run with `stdin` connected to `/dev/null`. In JSONL mode, invalid
+JSON lines and lines missing `source` or `content` are logged as warnings
+and skipped. In raw mode, empty stdout is treated as a failure. A non-zero
+exit code or timeout fails the entire source.
 
 Change detection relies on content hashing: lore always runs the command
 but skips re-indexing documents whose content hash is unchanged. Use
 `--force` to re-index all exec documents regardless of content.
-
-The `source` value from each JSONL line is used directly as the document
-identity key. Use a stable, unique identifier (database primary key, file
-path, URL). Changing the `source` value causes lore to treat the document
-as new; the old version becomes stale and is removed.
 
 ### MCP source
 

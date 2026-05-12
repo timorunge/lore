@@ -276,7 +276,27 @@ pub struct MaildirSource {
     pub processing: Option<ProcessingRef>,
 }
 
-/// Command(s) to execute. stdout is read as JSONL; each line becomes a document.
+/// Output format for exec source stdout.
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize, schemars::JsonSchema,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum ExecOutputMode {
+    /// Each non-empty stdout line is parsed as a JSON object with required `source` and `content` fields. This is the default.
+    #[default]
+    Jsonl,
+    /// The entire stdout of each command is treated as a single document's content.
+    Raw,
+}
+
+impl ExecOutputMode {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    fn is_default(&self) -> bool {
+        *self == Self::Jsonl
+    }
+}
+
+/// Command(s) to execute. stdout is parsed as JSONL (default) or consumed as raw content.
 #[derive(Debug, Clone, Deserialize, Serialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 #[allow(private_interfaces)]
@@ -284,6 +304,15 @@ pub struct ExecSource {
     /// Shell command(s) to run via `sh -c` (string or list).
     #[serde(deserialize_with = "deserialize_string_or_list")]
     pub exec: Vec<String>,
+    /// Output mode: `jsonl` (default) or `raw`. In `raw` mode the entire stdout becomes a single document.
+    #[serde(default, skip_serializing_if = "ExecOutputMode::is_default")]
+    pub output: ExecOutputMode,
+    /// Stable identity key used as the document `source` in `raw` mode. Defaults to the command string when omitted. Ignored in `jsonl` mode.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_key: Option<String>,
+    /// Format hint for the document content (e.g. `"md"`, `"txt"`). In `raw` mode this tells the extractor how to parse the content. In `jsonl` mode it serves as a fallback when a line omits the `format` field.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub format: Option<String>,
     /// Working directory override (default: config base dir). Supports `~` and `$VAR`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dir: Option<String>,
@@ -816,6 +845,18 @@ impl SourceConfig {
                 }
                 if let Some(t) = s.timeout_secs {
                     anyhow::ensure!(t > 0, "exec timeout_secs must be greater than 0");
+                }
+                if s.output == ExecOutputMode::Raw {
+                    if let Some(key) = &s.source_key {
+                        anyhow::ensure!(
+                            !key.trim().is_empty(),
+                            "exec source_key must not be blank"
+                        );
+                    }
+                    anyhow::ensure!(
+                        s.source_key.is_none() || s.exec.len() == 1,
+                        "exec source_key cannot be used with multiple commands in raw mode"
+                    );
                 }
             }
             Self::Mcp(s) => {

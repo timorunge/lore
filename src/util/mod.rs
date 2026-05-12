@@ -4,7 +4,6 @@ mod fs;
 mod hash;
 mod lang;
 mod marker;
-mod net;
 pub mod platform;
 pub mod progress;
 mod time;
@@ -15,7 +14,6 @@ pub use hash::blake3_hex;
 pub(crate) use hash::hex_encode;
 pub use lang::normalize_language;
 pub use marker::{ensure_marker, verify_marker};
-pub use net::is_loopback;
 pub use time::{iso8601_now, unix_now};
 
 /// XDG-style config directory: `$XDG_CONFIG_HOME` if set, else `~/.config`.

@@ -18,9 +18,9 @@ use tracing::info;
 
 use lore::config::ResolvedConfig;
 use lore::fmt::{format_count, plural};
+use lore::net::is_loopback;
 use lore::output::{format_formats, format_kinds, format_lang_summary, format_source_types};
 use lore::store::{self, StoreSet};
-use lore::util::is_loopback;
 use lore::{w, wln};
 
 /// Maximum number of topics to include in the server instructions preview.

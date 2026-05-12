@@ -669,6 +669,9 @@ async fn discover_exec(
         &s.env,
         timeout,
         ctx.topic.as_deref(),
+        s.output,
+        s.source_key.as_deref(),
+        s.format.as_deref(),
         ctx.cwd,
         ctx.progress,
     )

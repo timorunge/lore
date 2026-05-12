@@ -27,9 +27,9 @@ pub use processing::{
     ContentFilterConfig, ProcessingConfig, ProcessingLimits, ProcessingProfile, ProcessingRef,
 };
 pub use source::{
-    ExecSource, FeedSource, GitSource, LocalSource, MaildirSource, McpResources, McpSource,
-    McpToolCall, McpTransport, S3Source, SitemapSource, SourceConfig, UpdateMode, UrlSource,
-    YoutubeSource,
+    ExecOutputMode, ExecSource, FeedSource, GitSource, LocalSource, MaildirSource, McpResources,
+    McpSource, McpToolCall, McpTransport, S3Source, SitemapSource, SourceConfig, UpdateMode,
+    UrlSource, YoutubeSource,
 };
 #[cfg(feature = "ingest")]
 pub(crate) use source::{validate_git_ref, validate_git_url};

@@ -25,8 +25,7 @@ pub mod fmt;
 pub mod ingest;
 #[cfg(feature = "llm")]
 pub mod llm;
-#[cfg(feature = "ingest")]
-pub(crate) mod net;
+pub mod net;
 pub mod output;
 pub mod query;
 pub mod store;

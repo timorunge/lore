@@ -142,7 +142,7 @@ const SOURCE_TYPES: &[SourceType] = &[
     SourceType {
         label: "Exec",
         key: "exec",
-        discovery: "Run shell command(s) via `sh -c`, read JSONL from stdout, one document per line",
+        discovery: "Run shell command(s) via `sh -c`; JSONL (default) or raw stdout mode",
         desc_fn: source_desc::<lore::config::ExecSource>,
     },
     SourceType {

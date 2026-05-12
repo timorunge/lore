@@ -65,7 +65,7 @@ SourceConfig -> SourceItems ------> LoaderResult --------> Chunk[] -> Store
 | Feed | Fetch RSS/Atom XML, extract entry links, return URL list |
 | YouTube | Parse URL, discover video IDs (playlist/channel via `yt-dlp --flat-playlist`), preload transcripts |
 | Maildir | Walk cur/ and new/ subdirectories, parse RFC 2822 messages with mail-parser |
-| Exec | Run shell command(s) via `sh -c`, read JSONL from stdout, one document per line |
+| Exec | Run shell command(s) via `sh -c`; JSONL (default) or raw stdout mode |
 | MCP | Connect to upstream MCP server, auto-discover resources and/or call tools, read text content |
 <!-- END GENERATED: source-discovery -->
 
