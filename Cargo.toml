@@ -108,7 +108,7 @@ flate2 = { version = "1", optional = true }
 zstd = { version = "0.13", optional = true }
 bzip2 = { version = "0.6", optional = true }
 xz2 = { version = "0.1", optional = true }
-rmcp = { version = "1.4", features = ["client", "transport-child-process", "transport-streamable-http-client-reqwest"], optional = true }
+rmcp = { version = "1.7", features = ["client", "transport-child-process", "transport-streamable-http-client-reqwest"], optional = true }
 mail-parser = { version = "0.11", optional = true }
 mime_guess = { version = "2", optional = true }
 tempfile = "3"
