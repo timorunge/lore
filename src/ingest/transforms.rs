@@ -38,6 +38,10 @@ pub struct CompiledProfile {
 
 impl CompiledProfile {
     /// Compile a `ProcessingProfile` into an executable form.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any regex pattern in the pipeline is invalid.
     pub fn compile(profile: &ProcessingProfile) -> Result<Self> {
         let mut pipeline = Vec::with_capacity(profile.pipeline.len());
         for (i, step) in profile.pipeline.iter().enumerate() {

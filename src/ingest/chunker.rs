@@ -588,6 +588,68 @@ mod tests {
     }
 
     #[test]
+    fn chunker_boundary_empty_document() {
+        let doc = LoaderResult::test_doc("");
+        let chunks = chunk_markdown(&doc, "test", &ProcessingProfile::default());
+        assert!(chunks.is_empty(), "empty doc must produce zero chunks");
+    }
+
+    #[test]
+    fn chunker_boundary_doc_shorter_than_chunk() {
+        let doc = LoaderResult::test_doc("Short content.");
+        let cfg = ProcessingProfile {
+            min_chunk_chars: 0,
+            max_chunk_chars: 1600,
+            ..Default::default()
+        };
+        let chunks = chunk_markdown(&doc, "test", &cfg);
+        assert_eq!(
+            chunks.len(),
+            1,
+            "short doc should produce exactly one chunk"
+        );
+        assert!(chunks[0].body.contains("Short content"));
+        assert_eq!(chunks[0].chunk_index, 0);
+    }
+
+    #[test]
+    fn chunker_boundary_min_chunk_filters_tiny_pieces() {
+        let doc = LoaderResult::test_doc("ab\n\ncd\n\nef");
+        let cfg = ProcessingProfile {
+            min_chunk_chars: 10,
+            max_chunk_chars: 1600,
+            ..Default::default()
+        };
+        let chunks = chunk_markdown(&doc, "test", &cfg);
+        for c in &chunks {
+            assert!(
+                c.body.len() >= cfg.min_chunk_chars || chunks.len() == 1,
+                "chunk body shorter than min_chunk_chars={}: {:?}",
+                cfg.min_chunk_chars,
+                c.body
+            );
+        }
+    }
+
+    #[test]
+    fn chunker_boundary_chunk_indices_are_contiguous() {
+        let content = "# A\n\nSome text here.\n\n# B\n\nMore text here.\n\n# C\n\nEven more text.";
+        let doc = LoaderResult::test_doc(content);
+        let cfg = ProcessingProfile {
+            min_chunk_chars: 0,
+            max_chunk_chars: 200,
+            ..Default::default()
+        };
+        let chunks = chunk_markdown(&doc, "test", &cfg);
+        for (i, chunk) in chunks.iter().enumerate() {
+            assert_eq!(
+                chunk.chunk_index, i as i64,
+                "chunk_index must equal position in output vec"
+            );
+        }
+    }
+
+    #[test]
     fn chunking_presplit_no_duplicate_heading() {
         let repeated = "x ".repeat(30);
         let presplit_content = format!("# My Section\n\n{repeated}\n\n{repeated}\n\n{repeated}");

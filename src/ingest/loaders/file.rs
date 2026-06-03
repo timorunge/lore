@@ -217,6 +217,10 @@ fn detect_format(path: &Path, mime: Option<&str>) -> Option<String> {
 }
 
 /// Walk `base` for files matching `pattern` (gitignore-aware), capped at `max` entries.
+///
+/// # Errors
+///
+/// Returns an error if the glob pattern is invalid or the blocking walk task panics.
 pub async fn list_files(base: &Path, pattern: &str, max: Option<usize>) -> Result<Vec<PathBuf>> {
     let base = base.to_path_buf();
     let pattern = pattern.to_owned();
@@ -275,6 +279,10 @@ fn list_files_sync(base: &Path, pattern: &str, max: Option<usize>) -> Result<Vec
 }
 
 /// Read a single file, extract its text via kreuzberg or raw UTF-8 fallback, and return a `LoaderResult`.
+///
+/// # Errors
+///
+/// Returns an error if the file cannot be read or exceeds the configured size or extraction limits.
 pub async fn read_file(
     path: &Path,
     topic: Option<&str>,

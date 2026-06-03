@@ -17,6 +17,7 @@ pub(crate) async fn run_exec(
     dir: Option<&str>,
     env: &HashMap<String, String>,
     timeout_secs: u64,
+    max_output_bytes: usize,
     topic: Option<&str>,
     output: ExecOutputMode,
     source_key: Option<&str>,
@@ -37,7 +38,8 @@ pub(crate) async fn run_exec(
     let mut all_docs = Vec::new();
     let mut failures = Vec::new();
     for cmd in cmds {
-        let stdout = run_single_cmd(cmd, &effective_dir, env, timeout_secs).await?;
+        let stdout =
+            run_single_cmd(cmd, &effective_dir, env, timeout_secs, max_output_bytes).await?;
         match output {
             ExecOutputMode::Jsonl => {
                 for line in stdout.lines() {
@@ -92,40 +94,81 @@ async fn run_single_cmd(
     dir: &Path,
     env: &HashMap<String, String>,
     timeout_secs: u64,
+    max_output_bytes: usize,
 ) -> Result<String> {
-    let mut child = tokio::process::Command::new("sh");
-    child
+    const STDERR_CAP: usize = 16 * 1024;
+
+    let mut command = tokio::process::Command::new("sh");
+    command
         .args(["-c", cmd])
         .current_dir(dir)
+        .kill_on_drop(true)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     for (k, v) in env {
-        child.env(k, v);
+        command.env(k, v);
     }
 
-    let output = tokio::time::timeout(Duration::from_secs(timeout_secs), child.output())
+    let mut child = command.spawn().map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            anyhow::anyhow!("sh is not available; exec sources require a POSIX shell on PATH")
+        } else {
+            anyhow::Error::from(e).context("failed to spawn exec command")
+        }
+    })?;
+
+    let stdout = child.stdout.take().expect("stdout piped");
+    let stderr = child.stderr.take().expect("stderr piped");
+
+    let (stdout_bytes, stderr_bytes, status) =
+        tokio::time::timeout(Duration::from_secs(timeout_secs), async {
+            use tokio::io::AsyncReadExt;
+            let (stdout_res, stderr_res) = tokio::join!(
+                async {
+                    let mut buf = Vec::new();
+                    stdout
+                        .take((max_output_bytes as u64).saturating_add(1))
+                        .read_to_end(&mut buf)
+                        .await
+                        .map(|_| buf)
+                },
+                async {
+                    let mut buf = Vec::new();
+                    stderr
+                        .take((STDERR_CAP as u64).saturating_add(1))
+                        .read_to_end(&mut buf)
+                        .await
+                        .map(|_| buf)
+                },
+            );
+            let s_bytes = stdout_res?;
+            let e_bytes = stderr_res?;
+            let st = child.wait().await?;
+            Ok::<_, std::io::Error>((s_bytes, e_bytes, st))
+        })
         .await
         .context("exec command timed out")?
-        .map_err(|e| {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                anyhow::anyhow!("sh is not available; exec sources require a POSIX shell on PATH")
-            } else {
-                anyhow::Error::from(e).context("failed to spawn exec command")
-            }
-        })?;
+        .map_err(|e| anyhow::Error::from(e).context("failed to read exec command output"))?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
+    if stdout_bytes.len() > max_output_bytes {
+        anyhow::bail!(
+            "exec command exceeded max_output_bytes ({max_output_bytes}); \
+             raise exec.max_output_bytes or narrow the command"
+        );
+    }
+
+    if !status.success() {
+        let stderr = String::from_utf8_lossy(&stderr_bytes);
         anyhow::bail!(
             "exec command {:?} exited with {}: {}",
             cmd,
-            output.status,
+            status,
             stderr.trim()
         );
     }
 
-    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+    Ok(String::from_utf8_lossy(&stdout_bytes).into_owned())
 }
 
 fn parse_jsonl_line(
@@ -296,6 +339,7 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn raw_mode_cmd_is_source() {
         let (docs, failures) = run_exec(
@@ -303,6 +347,7 @@ mod tests {
             None,
             &HashMap::new(),
             10,
+            10 * 1024 * 1024,
             None,
             ExecOutputMode::Raw,
             None,
@@ -318,6 +363,7 @@ mod tests {
         assert_eq!(docs[0].content, "hello");
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn raw_mode_explicit_source_key() {
         let (docs, _) = run_exec(
@@ -325,6 +371,7 @@ mod tests {
             None,
             &HashMap::new(),
             10,
+            10 * 1024 * 1024,
             None,
             ExecOutputMode::Raw,
             Some("my-doc"),
@@ -337,6 +384,7 @@ mod tests {
         assert_eq!(docs[0].source, "my-doc");
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn raw_mode_empty_stdout_yields_failure() {
         let (docs, failures) = run_exec(
@@ -344,6 +392,7 @@ mod tests {
             None,
             &HashMap::new(),
             10,
+            10 * 1024 * 1024,
             None,
             ExecOutputMode::Raw,
             None,
@@ -357,6 +406,7 @@ mod tests {
         assert_eq!(failures.len(), 1);
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn raw_mode_topic_and_format() {
         let (docs, _) = run_exec(
@@ -364,6 +414,7 @@ mod tests {
             None,
             &HashMap::new(),
             10,
+            10 * 1024 * 1024,
             Some("Docs"),
             ExecOutputMode::Raw,
             None,
@@ -375,5 +426,82 @@ mod tests {
         .unwrap();
         assert_eq!(docs[0].topic.as_deref(), Some("Docs"));
         assert_eq!(docs[0].format.as_deref(), Some("md"));
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn exec_output_within_cap_ok() {
+        let (docs, failures) = run_exec(
+            &["echo hello".to_owned()],
+            None,
+            &HashMap::new(),
+            10,
+            10 * 1024 * 1024,
+            None,
+            ExecOutputMode::Raw,
+            None,
+            None,
+            Path::new("/tmp"),
+            &ProgressHandle::noop(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(docs.len(), 1);
+        assert!(failures.is_empty());
+        assert_eq!(docs[0].content, "hello");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn exec_output_exceeding_cap_errors() {
+        // Emit 10 bytes via a POSIX-portable command (no bash brace expansion,
+        // which dash -- Ubuntu's /bin/sh -- does not support).
+        let result = run_exec(
+            &["printf 1234567890".to_owned()],
+            None,
+            &HashMap::new(),
+            10,
+            5, // 5-byte cap
+            None,
+            ExecOutputMode::Raw,
+            None,
+            None,
+            Path::new("/tmp"),
+            &ProgressHandle::noop(),
+        )
+        .await;
+        let err = result.unwrap_err();
+        assert!(
+            err.to_string().contains("max_output_bytes"),
+            "error should mention max_output_bytes: {err}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn exec_respects_configured_cap() {
+        // 'echo hi' outputs "hi\n" (3 bytes), which exceeds a 2-byte cap.
+        let result = run_exec(
+            &["echo hi".to_owned()],
+            None,
+            &HashMap::new(),
+            10,
+            2, // 2-byte cap
+            None,
+            ExecOutputMode::Raw,
+            None,
+            None,
+            Path::new("/tmp"),
+            &ProgressHandle::noop(),
+        )
+        .await;
+        assert!(
+            result.is_err(),
+            "should fail when output exceeds configured cap"
+        );
+        assert!(
+            result.unwrap_err().to_string().contains("max_output_bytes"),
+            "error should mention max_output_bytes"
+        );
     }
 }

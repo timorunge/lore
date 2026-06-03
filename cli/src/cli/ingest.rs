@@ -152,6 +152,11 @@ impl IngestObserver for CliIngestObserver {
         *status = sb;
     }
 
+    fn on_llm_warning(&self, msg: &str) {
+        let prefix = self.kb_prefix();
+        self.println(format!("{prefix}[{} ] {msg}", self.paint.yellow("!")));
+    }
+
     fn on_dry_run_notice(&self) {
         let prefix = self.kb_prefix();
         self.println(format!(

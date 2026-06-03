@@ -54,6 +54,9 @@ pub trait IngestObserver: Send + Sync {
     /// Ingest run starting. Called once before any sources are processed.
     fn on_start(&self, _kb_name: &str, _n_sources: usize, _mode: IngestMode, _dry_run: bool) {}
 
+    /// LLM configuration warning (missing credentials, likely to fail).
+    fn on_llm_warning(&self, _msg: &str) {}
+
     /// Dry-run notice.
     fn on_dry_run_notice(&self) {}
 
@@ -186,6 +189,10 @@ pub struct IngestResult {
 /// The `observer` controls all user-facing output (progress bars, status
 /// messages, signal handling). Use [`QuietIngestObserver`] for silent
 /// operation.
+///
+/// # Errors
+///
+/// Returns an error if the store cannot be opened or a fatal I/O error occurs during indexing.
 pub async fn ingest(
     config: IngestConfig,
     config_path: PathBuf,
@@ -220,6 +227,31 @@ pub async fn ingest(
         config.store.doc_store_cache_blocks,
     )
     .context("failed to open store")?;
+
+    // Warn if the existing store was built with different chunking parameters
+    // or a different lore version.
+    if store_exists && mode != IngestMode::Recreate {
+        let current_fingerprint = chunk_config_fingerprint(&config);
+        if let Some(stored) = store.get_metadata(meta_key::CHUNK_CONFIG)
+            && stored != current_fingerprint
+        {
+            tracing::warn!(
+                stored_chunk_config = stored,
+                current_chunk_config = current_fingerprint,
+                "store was built with different chunking parameters; \
+                 run `lore ingest --recreate` to rebuild with current settings"
+            );
+        }
+        if let Some(stored_ver) = store.get_metadata(meta_key::LORE_VERSION)
+            && stored_ver != crate::VERSION
+        {
+            tracing::warn!(
+                stored_version = stored_ver,
+                current_version = crate::VERSION,
+                "store was built with a different lore version"
+            );
+        }
+    }
 
     // Acquire an exclusive lock to prevent concurrent ingests against the
     // same store. The lock is acquired after Store::open (which creates the
@@ -349,6 +381,13 @@ pub async fn ingest(
             .context("failed to initialize LLM client")?,
     };
     let store = &*ctx.store;
+
+    #[cfg(feature = "llm")]
+    if let Some(ref client) = ctx.llm_client {
+        for warning in client.validate() {
+            observer.on_llm_warning(&warning);
+        }
+    }
 
     let mut total_docs = 0u64;
     let mut total_chunks = 0u64;
@@ -813,6 +852,18 @@ fn cleanup_stale_documents(
     Ok(())
 }
 
+/// Stable fingerprint of the chunking-relevant processing defaults.
+///
+/// Captures `max_chunk_chars` and `min_chunk_chars` from the global processing
+/// config. When this string changes between ingest runs a warning is emitted so
+/// users know their stored chunks may not match the current settings.
+fn chunk_config_fingerprint(config: &IngestConfig) -> String {
+    format!(
+        "max_chunk_chars={},min_chunk_chars={}",
+        config.processing.max_chunk_chars, config.processing.min_chunk_chars
+    )
+}
+
 /// Write run metadata to the store, commit, and optimize if needed.
 fn write_store_metadata(
     store: &Store,
@@ -841,6 +892,7 @@ fn write_store_metadata(
         &config.store.writer_heap_mb.to_string(),
     );
     store.set_metadata(meta_key::LANGUAGE, config.store.language.as_str());
+    store.set_metadata(meta_key::CHUNK_CONFIG, &chunk_config_fingerprint(config));
 
     if let Some(name) = &config.name {
         store.set_metadata(meta_key::NAME, name);

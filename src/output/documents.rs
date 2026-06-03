@@ -13,6 +13,10 @@ use crate::store::DocDetail;
 use crate::types::{Chunk, DocMeta};
 
 /// Format a paginated list of document metadata.
+///
+/// # Errors
+///
+/// Returns an error if JSON serialization fails (only possible in `Json` output mode).
 pub fn format_document_list(
     entries: &[DocMeta],
     total: usize,
@@ -157,6 +161,10 @@ fn format_document_list_cli(
 }
 
 /// Format a single document with its chunk content.
+///
+/// # Errors
+///
+/// Returns an error if JSON serialization fails (only possible in `Json` output mode).
 pub fn format_document(
     doc: &DocDetail,
     offset: usize,

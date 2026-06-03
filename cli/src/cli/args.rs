@@ -482,4 +482,6 @@ pub enum MaintainAction {
         #[arg(default_value = "all", hide_default_value = true)]
         scope: CacheScope,
     },
+    /// Print a single-screen health report (config, features, LLM, store)
+    Health,
 }

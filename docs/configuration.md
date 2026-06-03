@@ -992,6 +992,7 @@ Runs one or more shell commands via `sh -c`. Supports two output modes:
 | `topic` | string | -- | Topic label applied to all chunks from this source. |
 | `tags` | string | -- | Comma-separated tags applied to all documents from this source. |
 | `processing` | string or object | -- | Processing override: a preset name or an inline profile object. |
+| `max_output_bytes` | int | -- | Maximum bytes to read from stdout (default: 10 MiB). Commands that exceed this limit fail with an error; raise this value or narrow the command if needed. |
 <!-- END GENERATED: config-source-exec -->
 
 **JSONL mode** (default): each non-empty stdout line must be a JSON object

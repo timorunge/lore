@@ -6,11 +6,13 @@ use crate::store::SearchHit;
 use crate::types::{Chunk, DocKind, DocMeta, SourceId, SourceType};
 
 /// Open a store at an existing path (for tests that need the path to outlive the store).
+#[allow(clippy::missing_panics_doc)]
 pub fn open_test_store(path: &std::path::Path) -> store::Store {
     store::Store::open(path, true, 256, crate::types::IndexLanguage::default(), 100).unwrap()
 }
 
 /// Create a temporary store backed by a `TempDir`.
+#[allow(clippy::missing_panics_doc)]
 pub fn temp_store() -> (store::Store, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     let store = open_test_store(dir.path());

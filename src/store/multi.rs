@@ -6,8 +6,8 @@ use anyhow::Result;
 use crate::store::documents::resolve_name_from_terms;
 use crate::store::types::{avg_words_per_chunk, sort_chunks_natural};
 use crate::store::{
-    DocDetail, DocFilter, SearchHit, SearchQuery, SourceResolveResult, Store, StoreInfo,
-    TopicFilter, TopicResult, TopicSort, TopicStat,
+    DocDetail, DocFilter, SearchHit, SearchQuery, SearchSort, SourceResolveResult, Store,
+    StoreInfo, TopicFilter, TopicResult, TopicSort, TopicStat,
 };
 use crate::types::{Chunk, DocKind, DocMeta, SourceType};
 use crate::util;
@@ -22,6 +22,10 @@ pub struct StoreSet {
 
 impl StoreSet {
     /// Wrap multiple stores into a federated set.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `stores` is empty.
     pub fn new(stores: Vec<Store>) -> Result<Self> {
         anyhow::ensure!(!stores.is_empty(), "StoreSet requires at least one store");
         Ok(Self {
@@ -30,6 +34,10 @@ impl StoreSet {
     }
 
     /// Wrap a single store.
+    ///
+    /// # Panics
+    ///
+    /// Never panics; the internal `new` call with a single-element vec always succeeds.
     pub fn single(store: Store) -> Self {
         Self::new(vec![store]).expect("single-element vec is always non-empty")
     }
@@ -45,6 +53,10 @@ impl StoreSet {
     }
 
     /// Full-text search across all stores, merged by score and re-paginated.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any store's Tantivy search fails.
     pub fn search(
         &self,
         sq: &SearchQuery,
@@ -63,11 +75,18 @@ impl StoreSet {
 
         let mut all_hits: Vec<SearchHit> = Vec::new();
         let mut total: usize = 0;
+        let mut batch_ranges: Vec<(usize, usize)> = Vec::new();
 
         for store in &self.stores {
+            let start = all_hits.len();
             let (hits, store_total) = store.search(&overfetch)?;
             total = total.saturating_add(store_total);
             all_hits.extend(hits);
+            batch_ranges.push((start, all_hits.len()));
+        }
+
+        if matches!(sq.sort, SearchSort::Score) {
+            normalize_scores(&mut all_hits, &batch_ranges);
         }
 
         sq.sort.apply(&mut all_hits, sq.reverse);
@@ -136,6 +155,10 @@ impl StoreSet {
     }
 
     /// Retrieve topic details, merging chunks from all stores that have the topic.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any store's topic query fails.
     pub fn get_topic(&self, name: &str) -> Result<Option<TopicResult>> {
         if self.stores.len() == 1 {
             return self.stores[0].get_topic(name);
@@ -213,6 +236,10 @@ impl StoreSet {
     }
 
     /// Retrieve a document's metadata and chunks, resolving the source key first.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any store's document query fails.
     pub fn get_document(&self, source_id: &str) -> Result<Option<DocDetail>> {
         if self.stores.len() == 1 {
             return self.stores[0].get_document(source_id);
@@ -276,6 +303,32 @@ impl StoreSet {
 fn merge_counts<K: Eq + std::hash::Hash>(target: &mut HashMap<K, u64>, source: HashMap<K, u64>) {
     for (k, v) in source {
         *target.entry(k).or_default() += v;
+    }
+}
+
+/// Min-max normalize BM25 scores within each store batch to [0.0, 1.0].
+///
+/// Makes scores from different-sized corpora comparable before merging.
+fn normalize_scores(hits: &mut [SearchHit], batch_ranges: &[(usize, usize)]) {
+    for &(start, end) in batch_ranges {
+        let batch = &hits[start..end];
+        if batch.is_empty() {
+            continue;
+        }
+        let min = batch
+            .iter()
+            .fold(f64::INFINITY, |acc, h| acc.min(h.score.unwrap_or(0.0)));
+        let max = batch
+            .iter()
+            .fold(f64::NEG_INFINITY, |acc, h| acc.max(h.score.unwrap_or(0.0)));
+        let range = max - min;
+        for h in &mut hits[start..end] {
+            h.score = Some(if range == 0.0 {
+                1.0
+            } else {
+                (h.score.unwrap_or(0.0) - min) / range
+            });
+        }
     }
 }
 
@@ -479,6 +532,169 @@ mod tests {
             Some("Bob Smith".to_owned()),
             "should resolve via second store's author terms"
         );
+
+        drop((d1, d2));
+    }
+
+    #[test]
+    fn normalize_scores_multi_store() {
+        let (set, _d1, _d2) = two_store_set("t1", "t2");
+        let sq = SearchQuery::new("content");
+        let (hits, _) = set.search(&sq).unwrap();
+        for hit in &hits {
+            let score = hit.score.expect("score should be present");
+            assert!(
+                (0.0..=1.0).contains(&score),
+                "score {score} should be in [0.0, 1.0]"
+            );
+        }
+    }
+
+    #[test]
+    fn normalize_scores_single_hit_per_store() {
+        let (s1, d1) = temp_store();
+        s1.insert_chunks(&[test_chunk("/a.md", "unique alpha", "t1", 0)])
+            .unwrap();
+        s1.upsert_document(test_meta("/a.md", "t1"));
+        s1.commit().unwrap();
+
+        let (s2, d2) = temp_store();
+        s2.insert_chunks(&[test_chunk("/b.md", "unique beta", "t2", 0)])
+            .unwrap();
+        s2.upsert_document(test_meta("/b.md", "t2"));
+        s2.commit().unwrap();
+
+        let set = StoreSet::new(vec![s1, s2]).unwrap();
+        let sq = SearchQuery::new("unique");
+        let (hits, _) = set.search(&sq).unwrap();
+        assert_eq!(hits.len(), 2);
+        for hit in &hits {
+            assert_eq!(
+                hit.score,
+                Some(1.0),
+                "single hit per store should normalize to 1.0"
+            );
+        }
+
+        drop((d1, d2));
+    }
+
+    #[test]
+    fn normalize_scores_skipped_for_source_sort() {
+        let (set, _d1, _d2) = two_store_set("t1", "t2");
+
+        // Same query under both sorts. Each store holds a single matching chunk,
+        // so normalization (when it runs) pins every score to exactly 1.0.
+        let scored = set
+            .search(&SearchQuery {
+                query: "content".into(),
+                sort: SearchSort::Score,
+                ..SearchQuery::default()
+            })
+            .unwrap()
+            .0;
+        let by_source = set
+            .search(&SearchQuery {
+                query: "content".into(),
+                sort: SearchSort::Source,
+                ..SearchQuery::default()
+            })
+            .unwrap()
+            .0;
+
+        assert_eq!(scored.len(), 2, "query should match one chunk per store");
+        assert_eq!(by_source.len(), 2, "query should match one chunk per store");
+
+        // Score sort normalizes each single-hit store batch to exactly 1.0...
+        assert!(
+            scored.iter().all(|h| h.score == Some(1.0)),
+            "score sort should normalize single-hit stores to 1.0, got {:?}",
+            scored.iter().map(|h| h.score).collect::<Vec<_>>()
+        );
+        // ...whereas source sort skips normalization and preserves the raw BM25
+        // scores, which would otherwise be forced to 1.0 if normalization ran.
+        assert!(
+            by_source.iter().all(|h| h.score != Some(1.0)),
+            "source sort must preserve raw BM25 scores, got {:?}",
+            by_source.iter().map(|h| h.score).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn score_sort_ties_break_by_source_not_store_order() {
+        // Two single-hit stores both normalize to exactly 1.0 -> a cross-store tie.
+        // Store insertion order is [zebra, apple] (deliberately NOT alphabetical),
+        // so a store-order tie-break would yield zebra first. The contract is that
+        // ties resolve by source path, independent of store declaration order.
+        let (s1, d1) = temp_store();
+        s1.insert_chunks(&[test_chunk("/zebra.md", "tie content", "t1", 0)])
+            .unwrap();
+        s1.upsert_document(test_meta("/zebra.md", "t1"));
+        s1.commit().unwrap();
+
+        let (s2, d2) = temp_store();
+        s2.insert_chunks(&[test_chunk("/apple.md", "tie content", "t2", 0)])
+            .unwrap();
+        s2.upsert_document(test_meta("/apple.md", "t2"));
+        s2.commit().unwrap();
+
+        let set = StoreSet::new(vec![s1, s2]).unwrap();
+        let (hits, _) = set.search(&SearchQuery::new("content")).unwrap();
+
+        assert_eq!(hits.len(), 2);
+        assert_eq!(
+            hits[0].score,
+            Some(1.0),
+            "both single-hit stores normalize to 1.0"
+        );
+        assert_eq!(hits[1].score, Some(1.0));
+        assert_eq!(
+            hits[0].chunk.source.as_ref(),
+            "/apple.md",
+            "tie must break by source path, not store insertion order"
+        );
+        assert_eq!(hits[1].chunk.source.as_ref(), "/zebra.md");
+
+        drop((d1, d2));
+    }
+
+    #[test]
+    fn normalize_preserves_relative_order() {
+        let (s1, d1) = temp_store();
+        s1.insert_chunks(&[
+            test_chunk("/a.md", "rust programming language guide", "t", 0),
+            test_chunk("/b.md", "rust rust rust", "t", 0),
+            test_chunk("/c.md", "brief rust", "t", 0),
+        ])
+        .unwrap();
+        s1.commit().unwrap();
+
+        let (s2, d2) = temp_store();
+        s2.insert_chunks(&[test_chunk("/d.md", "unrelated python", "t", 0)])
+            .unwrap();
+        s2.commit().unwrap();
+
+        let set = StoreSet::new(vec![s1, s2]).unwrap();
+        let sq = SearchQuery {
+            query: "rust".into(),
+            limit: 10,
+            ..SearchQuery::default()
+        };
+        let (hits, _) = set.search(&sq).unwrap();
+
+        let s1_scores: Vec<f64> = hits
+            .iter()
+            .filter(|h| h.chunk.source.starts_with('/'))
+            .filter(|h| h.chunk.source.as_ref() != "/d.md")
+            .map(|h| h.score.unwrap_or(0.0))
+            .collect();
+
+        for window in s1_scores.windows(2) {
+            assert!(
+                window[0] >= window[1],
+                "scores should be descending within a store: {s1_scores:?}"
+            );
+        }
 
         drop((d1, d2));
     }

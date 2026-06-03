@@ -668,6 +668,7 @@ async fn discover_exec(
         s.dir.as_deref(),
         &s.env,
         timeout,
+        s.max_output_bytes,
         ctx.topic.as_deref(),
         s.output,
         s.source_key.as_deref(),

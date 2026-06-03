@@ -75,13 +75,17 @@ impl Store {
         self.dirty.store(true, Ordering::Release);
     }
 
-    #[cfg(all(test, feature = "ingest"))]
+    #[cfg(feature = "ingest")]
     pub(crate) fn get_metadata(&self, key: &str) -> Option<String> {
         let meta = self.read_meta();
         meta.get(key).cloned()
     }
 
     /// Convenience wrapper: delete existing chunks, insert new ones, upsert document meta.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if deleting old chunks or inserting new chunks into the Tantivy index fails.
     pub fn replace_document(&self, source_id: &str, chunks: &[Chunk], meta: DocMeta) -> Result<()> {
         self.delete_chunks_by_source(source_id)?;
         if !chunks.is_empty() {
@@ -92,6 +96,10 @@ impl Store {
     }
 
     /// Fetch metadata and all chunks for a single document by source_id.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the Tantivy index query fails.
     pub fn get_document(&self, source_id: &str) -> Result<Option<DocDetail>> {
         let Some(meta) = self.read_docs().get(source_id).cloned() else {
             return Ok(None);

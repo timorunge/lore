@@ -104,6 +104,10 @@ pub fn is_lexically_safe_path(path: &Path) -> bool {
 /// On Unix, if the destination file already exists its permissions are preserved on
 /// the new file after the rename. New files receive the default `NamedTempFile`
 /// permissions (typically 0o600).
+///
+/// # Errors
+///
+/// Returns an error if the parent directory cannot be created, the temp file cannot be written, or the rename fails.
 pub fn atomic_write(path: &Path, data: &[u8]) -> Result<()> {
     let parent = path.parent().context("no parent directory")?;
     std::fs::create_dir_all(parent).context("failed to create parent directory")?;

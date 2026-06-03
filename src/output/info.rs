@@ -14,6 +14,10 @@ use crate::store::{StoreInfo, TopicStat};
 const TOPIC_DISPLAY_LIMIT: usize = 10;
 
 /// Format store statistics as CLI text, JSON, or MCP text.
+///
+/// # Errors
+///
+/// Returns an error if JSON serialization fails (only possible in `Json` output mode).
 pub fn format_store_info(
     info: &StoreInfo,
     store_entries: &[(PathBuf, u64)],
