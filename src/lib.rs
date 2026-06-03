@@ -1,3 +1,6 @@
+// Documentation lints are enforced on the public library surface only (the
+// workspace table leaves them allow-by-default so binaries aren't burdened).
+#![warn(clippy::missing_errors_doc, clippy::missing_panics_doc)]
 //! Knowledge base library: ingest, index, search, and serve documents over MCP.
 
 /// Infallible `write!` to a `String` -- panics on `Err` (which `String` never returns).

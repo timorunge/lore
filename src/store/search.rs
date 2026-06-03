@@ -23,6 +23,10 @@ impl Store {
     ///
     /// `total` is the exact Tantivy match count for the query+filters (excluding
     /// in-memory-only filters like source substring and `max_per_source`).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the query is empty or the Tantivy index search fails.
     pub fn search(
         &self,
         query: &SearchQuery,
@@ -204,6 +208,10 @@ impl Store {
     }
 
     /// Build a BooleanQuery that matches any of the given source strings.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `sources` is empty.
     pub fn source_term_query(&self, sources: &[impl AsRef<str>]) -> BooleanQuery {
         assert!(
             !sources.is_empty(),
@@ -225,6 +233,10 @@ impl Store {
 
     /// Fetch all chunks for a set of source paths. Returns chunks sorted by
     /// source then position.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the Tantivy index search or document retrieval fails.
     pub fn chunks_for_sources(&self, sources: &[impl AsRef<str>]) -> Result<Vec<Chunk>> {
         if sources.is_empty() {
             return Ok(Vec::new());

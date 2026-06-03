@@ -265,7 +265,7 @@ fn main() {
                     .config
                     .into_iter()
                     .next()
-                    .map(|p| lore::config::IngestConfig::from_yaml(&p))
+                    .map(|p| lore::config::load_config_with_hints(&p))
                     .transpose()?;
                 lore_cli::cli::preview::preview(lore_cli::cli::preview::PreviewOptions {
                     paths: &paths,
@@ -354,6 +354,12 @@ fn main() {
                                         pfx,
                                     ),
                                     MaintainAction::Clean { .. } => unreachable!(),
+                                    MaintainAction::Health => lore_cli::cli::maintain::health(
+                                        &rc.config_path,
+                                        &store_path,
+                                        lore_cli::terminal::output_mode(false),
+                                        pfx,
+                                    ),
                                 }
                             },
                         )

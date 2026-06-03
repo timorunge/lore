@@ -31,6 +31,10 @@ impl Store {
     /// Unlike `commit()`, this keeps the writer alive so that Tantivy's merge
     /// policy can compact segments in the background between commits (background
     /// compaction is managed by Tantivy, not controlled directly here).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the Tantivy commit or reader reload fails.
     pub fn commit_index(&self) -> Result<()> {
         if !self.dirty.load(Ordering::Acquire) {
             return Ok(());
@@ -48,6 +52,10 @@ impl Store {
     /// Full commit: Tantivy index + sidecar files (`lore.meta`, `lore.docs`).
     /// Used for per-source commits and the final commit. Skips writing when
     /// no changes have been made since the last commit.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the Tantivy commit or sidecar file writes fail.
     pub fn commit(&self) -> Result<()> {
         if !self.dirty.load(Ordering::Acquire) {
             return Ok(());
@@ -58,11 +66,23 @@ impl Store {
     /// Unconditional commit: always writes sidecar files regardless of dirty
     /// flags. Used on interrupt to guarantee persistence even if a prior
     /// commit already cleared the flags.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the Tantivy commit or sidecar file writes fail.
     pub fn force_commit(&self) -> Result<()> {
         self.commit_inner(true)
     }
 
     /// Add chunks to the Tantivy index.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the index writer cannot be initialised or adding a document fails.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the writer lock is in an unexpected state (should never occur in normal use).
     pub fn insert_chunks(&self, chunks: &[Chunk]) -> Result<()> {
         let guard = self.ensure_writer()?;
         let writer = guard.as_ref().expect("writer initialized by ensure_writer");
@@ -113,6 +133,14 @@ impl Store {
     }
 
     /// Delete all chunks for a given source ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the index writer cannot be initialised.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the writer lock is in an unexpected state (should never occur in normal use).
     pub fn delete_chunks_by_source(&self, source_id: &str) -> Result<()> {
         let term = tantivy::Term::from_field_text(self.fields.source_id, source_id);
         let guard = self.ensure_writer()?;
@@ -146,6 +174,10 @@ impl Store {
     /// Tantivy's GC can delete the old segment files after each merge commit.
     /// Holding the lock across rounds would not provide additional safety
     /// because each round is self-contained (commit + reader reload + GC).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if listing segments, merging, or committing fails.
     pub fn optimize(&self, on_progress: impl Fn(usize)) -> Result<()> {
         // Phase 1: smart merge -- collapse small segments while skipping the
         // dominant one to avoid a full rewrite when most data is already in a

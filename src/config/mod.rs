@@ -78,6 +78,10 @@ impl IngestConfig {
     ///
     /// Merges global user-level defaults (if present) under the project
     /// config before deserialization. Precedence: global < project < env vars.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be read, the YAML is invalid, or validation fails.
     pub fn from_yaml(path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(path)
             .with_context(|| format!("failed to read config: {}", path.display()))?;
@@ -241,6 +245,55 @@ impl Validate for IngestConfig {
 
         Ok(())
     }
+}
+
+/// Load a config file with user-friendly error hints on failure.
+///
+/// Wraps `IngestConfig::from_yaml` and appends contextual guidance when
+/// common error patterns are detected.
+///
+/// # Errors
+///
+/// Returns an error if the config file cannot be read, parsed, or fails validation.
+pub fn load_config_with_hints(path: &Path) -> Result<IngestConfig> {
+    IngestConfig::from_yaml(path).map_err(|e| annotate_config_error(e, path))
+}
+
+fn annotate_config_error(err: anyhow::Error, path: &Path) -> anyhow::Error {
+    let msg = format!("{err:#}");
+
+    let hint = if msg.contains("No such file") || msg.contains("not found") {
+        Some(format!(
+            "hint: config file not found at {}; run `lore init` to create one",
+            path.display()
+        ))
+    } else if msg.contains("unknown field") {
+        let field = extract_unknown_field(&msg).unwrap_or("(see above)");
+        Some(format!(
+            "hint: unknown field `{field}` -- check spelling or see docs/configuration.md"
+        ))
+    } else if msg.contains("failed to parse config") {
+        Some("hint: YAML syntax error -- check indentation and quoting".to_owned())
+    } else if msg.contains("requires the '") {
+        Some(
+            "hint: this source type requires a compile-time feature; \
+             reinstall with: cargo install lore --features <feature>"
+                .to_owned(),
+        )
+    } else {
+        None
+    };
+
+    match hint {
+        Some(h) => err.context(h),
+        None => err,
+    }
+}
+
+fn extract_unknown_field(msg: &str) -> Option<&str> {
+    let start = msg.find("unknown field `")? + "unknown field `".len();
+    let end = msg[start..].find('`')? + start;
+    Some(&msg[start..end])
 }
 
 /// Read an environment variable and parse it into `T`; returns `None` if unset, errors if malformed.
@@ -669,5 +722,59 @@ processing:
             cfg.processing.max_chunk_chars, 3200,
             "LORE_MAX_CHUNK_CHARS should override processing.max_chunk_chars"
         );
+    }
+
+    #[test]
+    fn annotate_config_error_file_not_found() {
+        let err = anyhow::anyhow!("failed to read config: No such file or directory");
+        let annotated = annotate_config_error(err, Path::new("/tmp/missing.yaml"));
+        let msg = format!("{annotated:#}");
+        assert!(msg.contains("hint:"), "should contain hint: {msg}");
+        assert!(msg.contains("lore init"), "should suggest lore init: {msg}");
+    }
+
+    #[test]
+    fn annotate_config_error_unknown_field() {
+        let err = anyhow::anyhow!("failed to parse config: unknown field `typo_field`");
+        let annotated = annotate_config_error(err, Path::new("/tmp/lore.yaml"));
+        let msg = format!("{annotated:#}");
+        assert!(
+            msg.contains("check spelling"),
+            "should suggest check spelling: {msg}"
+        );
+        assert!(
+            msg.contains("typo_field"),
+            "should mention the field name: {msg}"
+        );
+    }
+
+    #[test]
+    fn annotate_config_error_parse_error() {
+        let err = anyhow::anyhow!("failed to parse config: expected mapping");
+        let annotated = annotate_config_error(err, Path::new("/tmp/lore.yaml"));
+        let msg = format!("{annotated:#}");
+        assert!(
+            msg.contains("indentation"),
+            "should mention indentation: {msg}"
+        );
+    }
+
+    #[test]
+    fn annotate_config_error_passthrough() {
+        let err = anyhow::anyhow!("something totally unexpected");
+        let annotated = annotate_config_error(err, Path::new("/tmp/lore.yaml"));
+        let msg = format!("{annotated:#}");
+        assert!(!msg.contains("hint:"), "should not add hint: {msg}");
+    }
+
+    #[test]
+    fn extract_unknown_field_parses_serde_format() {
+        let msg = "unknown field `bad_field`, expected one of `name`, `sources`";
+        assert_eq!(extract_unknown_field(msg), Some("bad_field"));
+    }
+
+    #[test]
+    fn extract_unknown_field_returns_none_for_unrecognized() {
+        assert_eq!(extract_unknown_field("no backtick pattern here"), None);
     }
 }

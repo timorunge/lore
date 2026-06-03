@@ -17,6 +17,10 @@ use crate::util::{atomic_write, blake3_hex};
 /// directory) this is acceptable: a crash here is no worse than the marker never
 /// being written.  If hard durability is required, callers must fsync the
 /// parent directory after this function returns.
+///
+/// # Errors
+///
+/// Returns an error if the marker file cannot be written.
 pub fn ensure_marker(root: &Path, file_name: &str, salt: &str) -> Result<()> {
     // `canonicalize` resolves symlinks so the hash is stable across relative-path
     // variations.  The fallback to the raw path (when the directory does not yet

@@ -73,6 +73,10 @@ pub struct DocumentEnrichment {
 
 impl LlmClient {
     /// Create a new client from the given LLM config, building the shared HTTP client.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP client cannot be built (e.g. invalid TLS configuration).
     pub fn new(config: &LlmConfig) -> Result<Self> {
         let http = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(config.timeout_secs))
@@ -84,6 +88,60 @@ impl LlmClient {
             http,
             bedrock: tokio::sync::OnceCell::new(),
         })
+    }
+
+    /// Check that required credentials are available for the configured provider.
+    ///
+    /// Returns warnings for obvious misconfigurations (missing API keys).
+    /// Does not perform network calls.
+    pub fn validate(&self) -> Vec<String> {
+        Self::validate_credentials(
+            self.config.provider,
+            std::env::var("ANTHROPIC_API_KEY").is_ok(),
+            std::env::var("OPENAI_API_KEY").is_ok(),
+        )
+    }
+
+    /// Pure credential-check logic, separated from environment access so it can
+    /// be unit-tested without mutating process-global environment variables.
+    fn validate_credentials(
+        provider: Option<LlmProvider>,
+        has_anthropic: bool,
+        has_openai: bool,
+    ) -> Vec<String> {
+        let mut warnings = Vec::new();
+        match provider {
+            Some(LlmProvider::Anthropic) => {
+                if !has_anthropic {
+                    warnings.push(
+                        "ANTHROPIC_API_KEY is not set -- LLM enrichment will fail; \
+                         set the variable or remove the llm config block"
+                            .to_owned(),
+                    );
+                }
+            }
+            Some(LlmProvider::Openai) => {
+                if !has_openai {
+                    warnings.push(
+                        "OPENAI_API_KEY is not set -- LLM enrichment will fail; \
+                         set the variable or remove the llm config block"
+                            .to_owned(),
+                    );
+                }
+            }
+            Some(LlmProvider::Ollama | LlmProvider::Bedrock) => {}
+            None => {
+                if !has_anthropic && !has_openai {
+                    warnings.push(
+                        "no LLM API key found (checked ANTHROPIC_API_KEY, OPENAI_API_KEY) \
+                         -- enrichment will fall back to Ollama; set a key or configure \
+                         llm.provider explicitly"
+                            .to_owned(),
+                    );
+                }
+            }
+        }
+        warnings
     }
 
     /// Detect a topic name for a document using LLM.
@@ -541,6 +599,10 @@ pub async fn enrich_document(
 }
 
 /// Enrich all chunks in a document batch via concurrent LLM calls, filtering by quality threshold.
+///
+/// # Panics
+///
+/// Panics if the enrichment semaphore is closed before all tasks complete (should never occur during normal operation).
 pub async fn enrich_chunks(
     chunks: &mut Vec<Chunk>,
     llm_client: &LlmClient,
@@ -596,4 +658,61 @@ pub async fn enrich_chunks(
             Some(chunk)
         })
         .collect();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_anthropic_missing_key() {
+        let warnings = LlmClient::validate_credentials(Some(LlmProvider::Anthropic), false, false);
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].contains("ANTHROPIC_API_KEY"));
+    }
+
+    #[test]
+    fn validate_anthropic_key_present() {
+        let warnings = LlmClient::validate_credentials(Some(LlmProvider::Anthropic), true, false);
+        assert!(warnings.is_empty());
+    }
+
+    #[test]
+    fn validate_openai_missing_key() {
+        let warnings = LlmClient::validate_credentials(Some(LlmProvider::Openai), false, false);
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].contains("OPENAI_API_KEY"));
+    }
+
+    #[test]
+    fn validate_openai_key_present() {
+        let warnings = LlmClient::validate_credentials(Some(LlmProvider::Openai), false, true);
+        assert!(warnings.is_empty());
+    }
+
+    #[test]
+    fn validate_ollama_no_warning() {
+        assert!(
+            LlmClient::validate_credentials(Some(LlmProvider::Ollama), false, false).is_empty()
+        );
+    }
+
+    #[test]
+    fn validate_bedrock_no_warning() {
+        assert!(
+            LlmClient::validate_credentials(Some(LlmProvider::Bedrock), false, false).is_empty()
+        );
+    }
+
+    #[test]
+    fn validate_default_provider_warns_without_keys() {
+        let warnings = LlmClient::validate_credentials(None, false, false);
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].contains("no LLM API key"));
+    }
+
+    #[test]
+    fn validate_default_provider_silent_with_key() {
+        assert!(LlmClient::validate_credentials(None, true, false).is_empty());
+    }
 }

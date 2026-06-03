@@ -419,6 +419,152 @@ fn fix_issues(store: &store::Store, issues: &[Issue]) -> Result<usize> {
     Ok(fixed)
 }
 
+/// Print a single-screen health report for this lore setup.
+pub fn health(
+    config_path: &Path,
+    store_path: &Path,
+    mode: OutputMode,
+    prefix: &LinePrefix,
+) -> Result<()> {
+    let mp = MultiProgress::new();
+    let paint = crate::terminal::stderr_painter();
+    let json = mode == OutputMode::Json;
+
+    if !json {
+        progress::mp_println(
+            &mp,
+            format!("{prefix}[{} ] lore health check", paint.purple(".")),
+        );
+    }
+
+    let mut hard_error = false;
+
+    // 1. Config validity
+    match lore::config::IngestConfig::from_yaml(config_path) {
+        Ok(_) => {
+            if !json {
+                progress::mp_println(
+                    &mp,
+                    format!(
+                        "{prefix}[{}] config: {} -- ok",
+                        paint.green("+"),
+                        config_path.display()
+                    ),
+                );
+            }
+        }
+        Err(e) => {
+            hard_error = true;
+            if !json {
+                progress::mp_println(
+                    &mp,
+                    format!(
+                        "{prefix}[{}] config: {} -- {e:#}",
+                        paint.red("!"),
+                        config_path.display()
+                    ),
+                );
+            }
+        }
+    }
+
+    // 2. Compiled features
+    if !json {
+        let features: Vec<&str> = [
+            #[cfg(feature = "ingest")]
+            "ingest",
+            #[cfg(feature = "llm")]
+            "llm",
+            #[cfg(feature = "s3")]
+            "s3",
+            #[cfg(feature = "mcp")]
+            "mcp",
+            #[cfg(feature = "ocr")]
+            "ocr",
+            #[cfg(feature = "iwork")]
+            "iwork",
+            #[cfg(feature = "tree-sitter")]
+            "tree-sitter",
+        ]
+        .into_iter()
+        .collect();
+        let feat_str = if features.is_empty() {
+            "none".to_owned()
+        } else {
+            features.join(", ")
+        };
+        progress::mp_println(
+            &mp,
+            format!("{prefix}[{}] features: {feat_str}", paint.green("+")),
+        );
+    }
+
+    // 3. LLM credential resolution (feature-gated)
+    #[cfg(feature = "llm")]
+    {
+        if let Ok(cfg) = lore::config::IngestConfig::from_yaml(config_path) {
+            if let Some(ref llm_cfg) = cfg.llm {
+                match lore::llm::LlmClient::new(llm_cfg) {
+                    Ok(_) => {
+                        if !json {
+                            progress::mp_println(
+                                &mp,
+                                format!("{prefix}[{}] llm: client initialized", paint.green("+")),
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        if !json {
+                            progress::mp_println(
+                                &mp,
+                                format!(
+                                    "{prefix}[{}] llm: could not initialize client: {e}",
+                                    paint.yellow("-"),
+                                ),
+                            );
+                        }
+                    }
+                }
+            } else if !json {
+                progress::mp_println(
+                    &mp,
+                    format!("{prefix}[{}] llm: not configured", paint.blue("i")),
+                );
+            }
+        }
+    }
+
+    // 4. Store reachability
+    let store_path_norm = normalize_path(store_path);
+    if store_path_norm.is_dir() {
+        if !json {
+            progress::mp_println(
+                &mp,
+                format!(
+                    "{prefix}[{}] store: {} -- reachable",
+                    paint.green("+"),
+                    store_path_norm.display()
+                ),
+            );
+        }
+    } else if !json {
+        progress::mp_println(
+            &mp,
+            format!(
+                "{prefix}[{}] store: {} -- not found (run `lore ingest` to create)",
+                paint.yellow("-"),
+                store_path_norm.display()
+            ),
+        );
+    }
+
+    if hard_error {
+        anyhow::bail!("health check found configuration errors (see above)");
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

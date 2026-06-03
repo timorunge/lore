@@ -105,6 +105,10 @@ impl ProcessingConfig {
     }
 
     /// Resolve a per-source `ProcessingRef` into a concrete profile.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a named preset is referenced but not defined in `self.presets`.
     pub fn resolve(&self, r: Option<&ProcessingRef>) -> Result<ProcessingProfile> {
         match r {
             None => Ok(self.default_profile()),

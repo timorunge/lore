@@ -162,22 +162,54 @@ pub enum SearchSort {
 
 impl SearchSort {
     /// Sort a slice of search hits in-place, optionally reversing.
+    ///
+    /// Every arm falls back to `tie_break` so the result is a deterministic
+    /// total order -- independent of store declaration order, merge order, and the
+    /// stability of the underlying sort algorithm.
     pub fn apply(self, hits: &mut [SearchHit], reverse: bool) {
         match self {
             SearchSort::Score => {
-                hits.sort_by(|a, b| b.score.unwrap_or(0.0).total_cmp(&a.score.unwrap_or(0.0)));
+                hits.sort_by(|a, b| {
+                    b.score
+                        .unwrap_or(0.0)
+                        .total_cmp(&a.score.unwrap_or(0.0))
+                        .then_with(|| tie_break(a, b))
+                });
             }
             SearchSort::Source => {
-                hits.sort_by(|a, b| a.chunk.source.cmp(&b.chunk.source));
+                hits.sort_by(|a, b| {
+                    a.chunk
+                        .source
+                        .cmp(&b.chunk.source)
+                        .then_with(|| tie_break(a, b))
+                });
             }
             SearchSort::Topic => {
-                hits.sort_by(|a, b| a.chunk.topic.as_deref().cmp(&b.chunk.topic.as_deref()));
+                hits.sort_by(|a, b| {
+                    a.chunk
+                        .topic
+                        .as_deref()
+                        .cmp(&b.chunk.topic.as_deref())
+                        .then_with(|| tie_break(a, b))
+                });
             }
         }
         if reverse {
             hits.reverse();
         }
     }
+}
+
+/// Deterministic, store-order-independent tie-break for hits whose primary sort
+/// key is equal: orders by source path, then chunk index. Without it, equal-score
+/// hits -- common after per-store score normalization pins every store's top hit to
+/// 1.0 -- would fall back to incidental merge/input order, which is fragile under
+/// refactors (e.g. switching to `sort_unstable_by` or a parallel store fetch).
+fn tie_break(a: &SearchHit, b: &SearchHit) -> std::cmp::Ordering {
+    a.chunk
+        .source
+        .cmp(&b.chunk.source)
+        .then_with(|| a.chunk.chunk_index.cmp(&b.chunk.chunk_index))
 }
 
 /// Full-text search request with filters, pagination, and sort.

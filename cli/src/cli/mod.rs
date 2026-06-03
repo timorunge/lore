@@ -133,8 +133,7 @@ pub fn resolve_all_configs(cli_configs: Vec<PathBuf>) -> Result<Vec<ResolvedConf
     paths
         .into_iter()
         .map(|config_path| {
-            let cfg = config::IngestConfig::from_yaml(&config_path)
-                .with_context(|| format!("failed to load config {}", config_path.display()))?;
+            let cfg = config::load_config_with_hints(&config_path)?;
             Ok(ResolvedConfig {
                 config: cfg,
                 config_path,

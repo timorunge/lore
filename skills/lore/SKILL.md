@@ -152,6 +152,7 @@ For HTTP transport, multi-KB setups, tool reference, and resource URIs:
 | `lore maintain repair` | Fix detected consistency issues |
 | `lore maintain compact` | Merge index segments for lower memory and faster reads |
 | `lore maintain clean` | Clear cached downloads, git repos, or temporary files |
+| `lore maintain health` | Print a single-screen health report (config, features, LLM, store) |
 <!-- END GENERATED: cli-commands -->
 
 ### Key flags

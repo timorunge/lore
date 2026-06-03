@@ -196,6 +196,10 @@ pub fn resolve_filters(
 }
 
 /// Build a `SearchQuery` from `SearchArgs` and run it against the store set.
+///
+/// # Errors
+///
+/// Returns an error if the query is empty or the Tantivy search fails.
 pub fn execute_search(
     stores: &StoreSet,
     args: SearchArgs,
@@ -223,6 +227,10 @@ pub fn execute_search(
 }
 
 /// Full-text search across indexed chunks with optional filters.
+///
+/// # Errors
+///
+/// Returns an error if the search query fails or output formatting fails.
 pub fn search(stores: &StoreSet, args: SearchArgs, mode: OutputMode) -> Result<QueryResult> {
     let offset = args.pagination.offset;
     let (results, sq, total) = execute_search(stores, args)?;
@@ -231,6 +239,10 @@ pub fn search(stores: &StoreSet, args: SearchArgs, mode: OutputMode) -> Result<Q
 }
 
 /// List all topics in the store with document and chunk counts.
+///
+/// # Errors
+///
+/// Returns an error if the store query fails or output formatting fails.
 // `args` is taken by value because the store query consumes its fields;
 // accepting `&TopicsArgs` would require either cloning every field or
 // changing the store API to borrow, adding noise with no runtime benefit.
@@ -256,6 +268,10 @@ pub fn list_topics(stores: &StoreSet, args: TopicsArgs, mode: OutputMode) -> Res
 }
 
 /// Retrieve details for a single topic by name.
+///
+/// # Errors
+///
+/// Returns an error if the store query fails, the topic is not found, or output formatting fails.
 // Same by-value rationale as `list_topics`: fields are consumed by the query.
 #[allow(clippy::needless_pass_by_value)]
 pub fn get_topic(stores: &StoreSet, args: TopicArgs, mode: OutputMode) -> Result<String> {
@@ -276,6 +292,10 @@ pub fn get_topic(stores: &StoreSet, args: TopicArgs, mode: OutputMode) -> Result
 }
 
 /// List indexed documents with optional filtering and pagination.
+///
+/// # Errors
+///
+/// Returns an error if output formatting fails.
 pub fn list_documents(stores: &StoreSet, args: DocsArgs, mode: OutputMode) -> Result<QueryResult> {
     let limit = args.pagination.limit;
     let offset = args.pagination.offset;
@@ -298,6 +318,10 @@ pub fn list_documents(stores: &StoreSet, args: DocsArgs, mode: OutputMode) -> Re
 }
 
 /// Retrieve a single document's metadata and chunks by source path.
+///
+/// # Errors
+///
+/// Returns an error if the store query fails, the document is not found, or output formatting fails.
 #[allow(clippy::needless_pass_by_value)]
 pub fn get_document(stores: &StoreSet, args: ReadArgs, mode: OutputMode) -> Result<String> {
     let (limit, offset) = if args.full {

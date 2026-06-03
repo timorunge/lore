@@ -34,6 +34,10 @@ pub trait WatchObserver: Send + Sync {
 
 /// Watch local source paths and re-ingest on changes, with optional periodic
 /// polling.
+///
+/// # Errors
+///
+/// Returns an error if the filesystem watcher cannot be initialised or encounters a fatal I/O failure.
 pub async fn watch(
     config: IngestConfig,
     config_path: PathBuf,

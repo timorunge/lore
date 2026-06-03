@@ -59,6 +59,10 @@ pub fn format_elapsed(d: Duration) -> String {
 }
 
 /// Serialize a value as pretty-printed JSON.
+///
+/// # Errors
+///
+/// Returns an error if the value cannot be serialized to JSON.
 pub fn to_json_pretty<T: serde::Serialize>(value: &T) -> Result<String> {
     serde_json::to_string_pretty(value).context("JSON serialization failed")
 }

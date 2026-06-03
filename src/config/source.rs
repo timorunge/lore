@@ -296,6 +296,14 @@ impl ExecOutputMode {
     }
 }
 
+const fn default_max_output_bytes() -> usize {
+    10 * 1024 * 1024
+}
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_default_max_output_bytes(v: &usize) -> bool {
+    *v == default_max_output_bytes()
+}
+
 /// Command(s) to execute. stdout is parsed as JSONL (default) or consumed as raw content.
 #[derive(Debug, Clone, Deserialize, Serialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -334,6 +342,13 @@ pub struct ExecSource {
     /// Processing override: a preset name or an inline profile object.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub processing: Option<ProcessingRef>,
+    /// Maximum bytes to read from stdout (default: 10 MiB). Commands that exceed this limit fail
+    /// with an error; raise this value or narrow the command if needed.
+    #[serde(
+        default = "default_max_output_bytes",
+        skip_serializing_if = "is_default_max_output_bytes"
+    )]
+    pub max_output_bytes: usize,
 }
 
 /// MCP transport protocol.
@@ -767,6 +782,10 @@ impl SourceConfig {
     }
 
     /// Check structural invariants and URL schemes for this source.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any required field is empty, invalid, or uses an unsupported URL scheme.
     pub fn validate(&self) -> Result<()> {
         match self {
             Self::Local(s) => {

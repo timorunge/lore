@@ -15,6 +15,10 @@ impl Store {
     /// Iterates each segment's FAST `source` StrColumn over live docs,
     /// collecting unique ordinals per segment and computing source_id from
     /// each unique source path. Skips soft-deleted docs via `doc_ids_alive()`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a segment's FAST column cannot be accessed.
     pub fn index_source_keys(&self) -> Result<HashSet<SourceId>> {
         let searcher = self.reader.searcher();
         let mut keys = HashSet::<SourceId>::new();
@@ -47,6 +51,10 @@ impl Store {
     ///
     /// Runs a targeted `BooleanQuery` to find matching doc addresses, then
     /// reads `source` from the FAST StrColumn and computes `source_id`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the Tantivy search or FAST field access fails.
     pub fn count_chunks_for_sources(&self, sources: &[&str]) -> Result<HashMap<SourceId, u64>> {
         if sources.is_empty() {
             return Ok(HashMap::new());

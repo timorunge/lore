@@ -68,6 +68,10 @@ pub struct Store {
 impl Store {
     /// Open a store for reading with default settings (phrase search on, default heap).
     /// The language is read from lore.meta if present, falling back to English.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the Tantivy index at `path` cannot be opened.
     pub fn open_readonly(path: &Path) -> Result<Self> {
         use crate::types::IndexLanguage;
         let preloaded = load_meta_map(path);
@@ -80,6 +84,10 @@ impl Store {
     }
 
     /// Open or create a store at `path`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the Tantivy index cannot be opened or created at `path`.
     pub fn open(
         path: &Path,
         phrase_search: bool,

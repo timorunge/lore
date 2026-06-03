@@ -149,6 +149,10 @@ pub(crate) fn http_cache_dir() -> Result<PathBuf> {
 }
 
 /// Return the logs directory under the cache root, creating it if needed.
+///
+/// # Errors
+///
+/// Returns an error if the cache root cannot be determined or the directory cannot be created.
 pub fn logs_dir() -> Result<PathBuf> {
     cache_dir(&[CacheScope::LOGS_DIR])
 }
@@ -160,6 +164,10 @@ pub(crate) fn repo_cache_path(repo_url: &str) -> Result<PathBuf> {
 }
 
 /// Clear cached data. Returns `(items_removed, bytes_freed)`.
+///
+/// # Errors
+///
+/// Returns an error if the cache root cannot be determined or deletion fails.
 pub fn clear_cache(scope: CacheScope) -> Result<(usize, u64)> {
     clear_cache_at(&cache_root()?, scope)
 }

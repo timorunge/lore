@@ -1,6 +1,6 @@
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::Result;
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget};
@@ -19,9 +19,12 @@ use crate::terminal;
 /// Cycle-scoped progress bars using shared types.
 struct WatchIngestObserver {
     mp: MultiProgress,
+    paint: Painter,
     shutdown: Arc<AtomicBool>,
     bars: SourceBars,
     idle_bar: Arc<std::sync::Mutex<ProgressBar>>,
+    /// Ensures the LLM credential warning prints at most once per watch session.
+    llm_warned: AtomicBool,
 }
 
 impl WatchIngestObserver {
@@ -35,8 +38,10 @@ impl WatchIngestObserver {
         Self {
             bars: SourceBars::new(mp.clone(), term_width),
             mp,
+            paint: terminal::stderr_painter(),
             shutdown,
             idle_bar: Arc::new(std::sync::Mutex::new(idle)),
+            llm_warned: AtomicBool::new(false),
         }
     }
 
@@ -72,6 +77,14 @@ impl IngestObserver for WatchIngestObserver {
     fn on_start(&self, _kb_name: &str, _n_sources: usize, _mode: IngestMode, _dry_run: bool) {
         self.hide_idle();
         self.bars.clear();
+    }
+
+    fn on_llm_warning(&self, msg: &str) {
+        // Credentials come from the environment and don't change across cycles,
+        // so surface the warning only once per watch session.
+        if !self.llm_warned.swap(true, Ordering::Relaxed) {
+            progress::mp_println(&self.mp, format!("[{} ] {msg}", self.paint.yellow("!")));
+        }
     }
 
     fn on_status(&self, _msg: &str) {}
