@@ -34,7 +34,7 @@ tokio = { version = "1", features = ["full"] }
 indicatif = "0.18"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 notify = "8"
-rmcp = { version = "1.7", features = ["server", "transport-io", "transport-streamable-http-server", "macros"] }
+rmcp = { version = "3.1", features = ["server", "transport-io", "transport-streamable-http-server", "macros"] }
 axum = { version = "0.8", features = ["http1", "tokio"] }
 tokio-util = "0.7"
 serde = { version = "1", features = ["derive"] }
