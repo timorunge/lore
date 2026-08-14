@@ -65,6 +65,11 @@ MSG is also detected via MIME type.
 4. Remaining plain text files (source code, config files, Markdown, etc.)
    are read as UTF-8 directly. Metadata is extracted from frontmatter
    (YAML `---`, TOML `+++`), key-value headers, and heuristic patterns.
+   Source extensions whose MIME type is not `text/*` (`.sh` ->
+   `application/x-sh`, `.sql` -> `application/x-sql`, `.ts` ->
+   `video/vnd.dlna.mpeg-tts`) are read this way too, as long as the
+   content is valid UTF-8 -- binary payloads sharing such an extension
+   still go through kreuzberg.
 5. Archives are extracted to a temporary directory and each file inside is
    processed individually.
 

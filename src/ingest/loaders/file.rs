@@ -159,6 +159,13 @@ fn kreuzberg_handles_text_mime(mime: &str) -> bool {
     )
 }
 
+/// Return `true` when the extension is a known source-code extension.
+fn is_code_extension(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|ext| CODE_EXTENSIONS.contains(&ext.to_lowercase().as_str()))
+}
+
 /// Auto-detect `DocKind` from MIME type and file extension.
 fn detect_doc_kind(mime: Option<&str>, ext: Option<&str>) -> DocKind {
     // Extension is more reliable than MIME for code and data files.
@@ -323,6 +330,12 @@ pub async fn read_file(
     let is_plain_text = match mime_type.as_deref() {
         Some(mt) if kreuzberg_handles_text_mime(mt) => false,
         Some(mt) if mt.starts_with("text/") => true,
+        // Source files whose extension maps to a non-text MIME type (.sh ->
+        // application/x-sh, .sql -> application/x-sql, .ts -> video/...-tts)
+        // are read directly: kreuzberg rejects those types as unsupported.
+        // The UTF-8 probe still guards against genuinely binary payloads
+        // sharing an extension (e.g. an MPEG transport stream named .ts).
+        Some(_) if is_code_extension(path) => is_text_file(path, bytes, text_extensions),
         None => is_text_file(path, bytes, text_extensions),
         _ => false,
     };
@@ -408,4 +421,56 @@ pub async fn read_file(
         last_modified: None,
         content_hash_override: None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use tempfile::TempDir;
+
+    use super::*;
+    use crate::config::ProcessingConfig;
+
+    async fn read_text(dir: &TempDir, name: &str, body: &[u8]) -> Result<LoaderResult> {
+        let path = dir.path().join(name);
+        std::fs::write(&path, body).unwrap();
+        let limits = ProcessingLimits::from_config(&ProcessingConfig::default());
+        read_file(&path, None, None, &limits, ExtractMode::Auto, None).await
+    }
+
+    #[tokio::test]
+    async fn code_extensions_with_non_text_mime_read_as_plain_text() {
+        let dir = TempDir::new().unwrap();
+
+        // These extensions resolve to MIME types kreuzberg rejects.
+        for (name, body) in [
+            ("build.sh", "#!/bin/bash\necho marker\n"),
+            ("schema.sql", "SELECT marker FROM t;\n"),
+            ("app.ts", "const marker = 1;\n"),
+            ("script.pl", "print \"marker\";\n"),
+            ("index.php", "<?php echo 'marker'; ?>\n"),
+        ] {
+            let result = read_text(&dir, name, body.as_bytes())
+                .await
+                .unwrap_or_else(|e| panic!("{name} should be readable: {e}"));
+            assert!(
+                result.content.contains("marker"),
+                "{name} content should be read verbatim, got {:?}",
+                result.content
+            );
+            assert_eq!(result.kind, DocKind::Code, "{name} should be code");
+        }
+    }
+
+    #[tokio::test]
+    async fn binary_payload_with_code_extension_is_not_read_as_text() {
+        let dir = TempDir::new().unwrap();
+        // An MPEG transport stream shares the .ts extension with TypeScript.
+        let err = read_text(&dir, "stream.ts", &[0x47, 0x40, 0x00, 0x10, 0x00, 0x00])
+            .await
+            .expect_err("binary .ts should not be read as text");
+        assert!(
+            err.to_string().contains("extraction failed"),
+            "expected kreuzberg routing, got: {err}"
+        );
+    }
 }
