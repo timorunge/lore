@@ -122,6 +122,19 @@ Individual targets are also available:
 All checks must pass. Zero tolerance for clippy warnings (`-D warnings` treats
 them as errors, matching CI).
 
+### Held-back dependencies
+
+Some dependencies are deliberately not at their newest version. `make update`
+(plain `cargo update`) will happily bump them and break the build, so check
+here first when an update fails to compile:
+
+| Crate | Held at | Why |
+|-------|---------|-----|
+| `tree-sitter-language-pack` | 1.14.3 | 1.15.0 adds required fields to `ProcessConfig` that `kreuzberg` 4.10.2 does not set, so it fails to compile with the `tree-sitter` feature. Unpin once kreuzberg supports it. |
+
+Only the lockfile enforces this -- the constraint is transitive, so there is no
+manifest entry to warn you.
+
 You can also run the underlying cargo commands directly:
 
 ```bash
