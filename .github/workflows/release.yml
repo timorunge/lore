@@ -53,7 +53,7 @@ jobs:
   # workflow already runs lint-and-test, so skip it here to avoid paying
   # for the same matrix twice.
   lint-and-test:
-    if: ${{ !github.event.pull_request }}
+    if: ${{ github.event_name != 'pull_request' }}
     uses: ./.github/workflows/lint-and-test.yml
     with:
       full: true
