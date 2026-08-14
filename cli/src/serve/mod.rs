@@ -8,8 +8,8 @@ use anyhow::{Context, Result};
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::tool::ToolCallContext;
 use rmcp::model::{
-    CallToolRequestParams, CallToolResult, ListResourceTemplatesResult, ListResourcesResult,
-    ListToolsResult, PaginatedRequestParams, ReadResourceRequestParams, ReadResourceResult,
+    CallToolRequestParams, CallToolResponse, ListResourceTemplatesResult, ListResourcesResult,
+    ListToolsResult, PaginatedRequestParams, ReadResourceRequestParams, ReadResourceResponse,
     ServerCapabilities, ServerInfo,
 };
 use rmcp::service::RequestContext;
@@ -147,7 +147,7 @@ impl ServerHandler for LoreServer {
         &self,
         request: CallToolRequestParams,
         context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, ErrorData> {
+    ) -> Result<CallToolResponse, ErrorData> {
         let tcc = ToolCallContext::new(self, request, context);
         self.tool_router.call(tcc).await
     }
@@ -184,9 +184,9 @@ impl ServerHandler for LoreServer {
         &self,
         request: ReadResourceRequestParams,
         _context: RequestContext<RoleServer>,
-    ) -> Result<ReadResourceResult, ErrorData> {
+    ) -> Result<ReadResourceResponse, ErrorData> {
         let info = self.cached_info();
-        resources::read_resource(&self.store, &info, &request.uri)
+        resources::read_resource(&self.store, &info, &request.uri).map(Into::into)
     }
 }
 

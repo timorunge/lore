@@ -33,7 +33,7 @@ fn extract_resource_text(contents: &[ResourceContents]) -> String {
         .iter()
         .filter_map(|c| match c {
             ResourceContents::TextResourceContents { text, .. } => Some(text.as_str()),
-            ResourceContents::BlobResourceContents { .. } => None,
+            _ => None,
         })
         .collect::<Vec<_>>()
         .join("\n\n")

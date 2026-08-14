@@ -1,6 +1,6 @@
 use rmcp::model::{
-    AnnotateAble, ListResourceTemplatesResult, ListResourcesResult, RawResource,
-    RawResourceTemplate, ReadResourceResult, Resource, ResourceContents,
+    ListResourceTemplatesResult, ListResourcesResult, ReadResourceResult, Resource,
+    ResourceContents, ResourceTemplate,
 };
 use tracing::error;
 
@@ -21,10 +21,9 @@ pub(super) fn build_resource_list(stores: &StoreSet, info: &StoreInfo) -> Vec<Re
     let mut resources = Vec::new();
 
     resources.push(
-        RawResource::new(INFO_URI, "Knowledge Base Info")
+        Resource::new(INFO_URI, "Knowledge Base Info")
             .with_description("Overview of the knowledge base: document count, topics, languages")
-            .with_mime_type("text/plain")
-            .no_annotation(),
+            .with_mime_type("text/plain"),
     );
 
     for topic in &info.topics {
@@ -37,10 +36,9 @@ pub(super) fn build_resource_list(stores: &StoreSet, info: &StoreInfo) -> Vec<Re
             plural(topic.chunk_count),
         );
         resources.push(
-            RawResource::new(uri, format!("Topic: {}", topic.name))
+            Resource::new(uri, format!("Topic: {}", topic.name))
                 .with_description(description)
-                .with_mime_type("text/markdown")
-                .no_annotation(),
+                .with_mime_type("text/markdown"),
         );
     }
 
@@ -65,10 +63,9 @@ pub(super) fn build_resource_list(stores: &StoreSet, info: &StoreInfo) -> Vec<Re
             plural(doc.chunk_count)
         ));
         resources.push(
-            RawResource::new(uri, name)
+            Resource::new(uri, name)
                 .with_description(desc_parts.join(" -- "))
-                .with_mime_type("text/markdown")
-                .no_annotation(),
+                .with_mime_type("text/markdown"),
         );
     }
 
@@ -95,14 +92,12 @@ pub(super) fn page_resources(all: &[Resource], offset: usize) -> ListResourcesRe
 
 /// Build the list of resource templates for topics and documents.
 pub(super) fn list_resource_templates() -> ListResourceTemplatesResult {
-    let topic_template = RawResourceTemplate::new("lore://topics/{name}", "Topic")
+    let topic_template = ResourceTemplate::new("lore://topics/{name}", "Topic")
         .with_description("Read chunks for a topic (first 500)")
-        .with_mime_type("text/markdown")
-        .no_annotation();
-    let doc_template = RawResourceTemplate::new("lore://docs/{path}", "Document")
+        .with_mime_type("text/markdown");
+    let doc_template = ResourceTemplate::new("lore://docs/{path}", "Document")
         .with_description("Read a document's chunks by source path (first 500)")
-        .with_mime_type("text/markdown")
-        .no_annotation();
+        .with_mime_type("text/markdown");
     ListResourceTemplatesResult {
         resource_templates: vec![topic_template, doc_template],
         ..Default::default()
@@ -218,15 +213,14 @@ mod tests {
 
         // 1 info + 2 topics + 2 docs
         assert_eq!(resources.len(), 5);
-        assert_eq!(resources[0].raw.uri, INFO_URI);
-        assert!(resources[1].raw.uri.starts_with(TOPIC_URI_PREFIX));
-        assert!(resources[3].raw.uri.starts_with(DOC_URI_PREFIX));
+        assert_eq!(resources[0].uri, INFO_URI);
+        assert!(resources[1].uri.starts_with(TOPIC_URI_PREFIX));
+        assert!(resources[3].uri.starts_with(DOC_URI_PREFIX));
     }
 
     #[test]
     fn page_resources_pagination() {
-        let make =
-            |i: usize| RawResource::new(format!("test://r{i}"), format!("r{i}")).no_annotation();
+        let make = |i: usize| Resource::new(format!("test://r{i}"), format!("r{i}"));
         let all: Vec<Resource> = (0..450).map(make).collect();
 
         let p0 = page_resources(&all, 0);
