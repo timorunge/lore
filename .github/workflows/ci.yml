@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      full:
+        description: "Run the full matrix (macOS, Windows, fuzz smoke)"
+        type: boolean
+        default: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,8 +24,13 @@ defaults:
     shell: bash
 
 jobs:
+  # Pull requests run the fast Linux-only tier; the full cross-platform
+  # matrix and the fuzz smoke test run once per merge to main. Use the
+  # workflow_dispatch button to force a full run on a branch.
   lint-and-test:
     uses: ./.github/workflows/lint-and-test.yml
+    with:
+      full: ${{ github.event_name == 'push' || inputs.full || false }}
 
   msrv:
     name: MSRV check

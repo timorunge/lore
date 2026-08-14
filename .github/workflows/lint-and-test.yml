@@ -2,6 +2,13 @@ name: Lint and Test
 
 on:
   workflow_call:
+    inputs:
+      full:
+        description: >-
+          Run the full matrix (macOS and Windows) plus the fuzz smoke test.
+          Off by default so pull requests get the fast Linux-only tier.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -41,7 +48,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: ${{ inputs.full && fromJSON('["ubuntu-latest", "macos-latest", "windows-latest"]') || fromJSON('["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -106,7 +113,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: ${{ inputs.full && fromJSON('["ubuntu-latest", "macos-latest", "windows-latest"]') || fromJSON('["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -141,6 +148,7 @@ jobs:
   fuzz:
     name: Fuzz smoke
     runs-on: ubuntu-latest
+    if: ${{ inputs.full }}
     timeout-minutes: 45
     env:
       RUSTFLAGS: ""
