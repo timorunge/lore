@@ -17,7 +17,7 @@ use rmcp::{ErrorData, RoleServer, ServerHandler, ServiceExt};
 use tracing::info;
 
 use lore::config::ResolvedConfig;
-use lore::fmt::{format_count, plural};
+use lore::fmt::{format_count, format_version, plural};
 use lore::net::is_loopback;
 use lore::output::{format_formats, format_kinds, format_lang_summary, format_source_types};
 use lore::store::{self, StoreSet};
@@ -273,7 +273,7 @@ pub(crate) fn format_store_overview(
     }
 
     if let Some(ref v) = info.lore_version {
-        wln!(out, "Version: lore v{v}");
+        wln!(out, "Version: {}", format_version(v));
     }
 
     if !info.topics.is_empty() {

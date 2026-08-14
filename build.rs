@@ -16,7 +16,7 @@ fn git_version(base: &str) -> String {
         .is_ok_and(|o| o.status.success());
 
     if is_tagged {
-        return format!("v{base}");
+        return base.to_owned();
     }
 
     let hash = std::process::Command::new("git")
@@ -28,7 +28,7 @@ fn git_version(base: &str) -> String {
         .map(|s| s.trim().to_owned());
 
     match hash {
-        Some(h) if !h.is_empty() => format!("v{base}-{h}"),
-        _ => format!("v{base}"),
+        Some(h) if !h.is_empty() => format!("{base}-{h}"),
+        _ => base.to_owned(),
     }
 }

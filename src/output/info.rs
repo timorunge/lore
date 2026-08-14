@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 
 use crate::fmt::table::format_kv;
-use crate::fmt::{format_bytes, format_count, plural, to_json_pretty};
+use crate::fmt::{format_bytes, format_count, format_version, plural, to_json_pretty};
 use crate::output::{
     OutputMode, format_formats, format_kinds, format_lang_summary, format_source_types,
     format_topic_table,
@@ -113,7 +113,7 @@ pub fn format_store_info(
     }
 
     if let Some(ref v) = info.lore_version {
-        kv.push(("Version", format!("lore v{v}")));
+        kv.push(("Version", format_version(v)));
     }
 
     let pairs: Vec<(&str, &str)> = kv.iter().map(|(l, v)| (*l, v.as_str())).collect();

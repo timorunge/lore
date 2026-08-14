@@ -58,6 +58,14 @@ pub fn format_elapsed(d: Duration) -> String {
     }
 }
 
+/// Render a build version as `lore v<version>`.
+///
+/// Stores written by older builds recorded the version with a leading `v`,
+/// so the prefix is stripped before re-adding it.
+pub fn format_version(version: &str) -> String {
+    format!("lore v{}", version.strip_prefix('v').unwrap_or(version))
+}
+
 /// Serialize a value as pretty-printed JSON.
 ///
 /// # Errors
@@ -110,6 +118,20 @@ mod tests {
                 format_count(n),
                 expected,
                 "format_count({n}) should be {expected:?}"
+            );
+        }
+
+        for (version, expected) in [
+            ("0.1.0", "lore v0.1.0"),
+            ("0.1.0-abc1234", "lore v0.1.0-abc1234"),
+            // Stores written by older builds recorded a leading "v".
+            ("v0.1.0", "lore v0.1.0"),
+            ("v0.1.0-abc1234", "lore v0.1.0-abc1234"),
+        ] {
+            assert_eq!(
+                format_version(version),
+                expected,
+                "format_version({version:?}) should be {expected:?}"
             );
         }
 

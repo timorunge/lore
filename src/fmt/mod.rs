@@ -5,7 +5,9 @@ pub mod style;
 pub(crate) mod table;
 pub(crate) mod wrap;
 
-pub use format::{format_bytes, format_count, format_elapsed, mb_to_bytes, to_json_pretty};
+pub use format::{
+    format_bytes, format_count, format_elapsed, format_version, mb_to_bytes, to_json_pretty,
+};
 pub use wrap::cap_output;
 pub(crate) use wrap::truncate_body;
 pub use wrap::visible_width;
