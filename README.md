@@ -37,7 +37,7 @@ Build from source:
 ```bash
 git clone https://github.com/timorunge/lore.git
 cd lore
-cargo install --path .
+cargo install --locked --path cli
 ```
 
 Optional feature flags:
@@ -54,13 +54,13 @@ Optional feature flags:
 <!-- END GENERATED: compile-features -->
 
 ```bash
-cargo install --path . --features llm         # with LLM enrichment
-cargo install --path . --features llm,s3      # with LLM + S3 support
-cargo install --path . --all-features         # all optional features
-cargo install --path . --no-default-features  # minimal build (no OCR, no MCP)
+cargo install --locked --path cli --features llm         # with LLM enrichment
+cargo install --locked --path cli --features llm,s3      # with LLM + S3 support
+cargo install --locked --path cli --all-features         # all optional features
+cargo install --locked --path cli --no-default-features  # minimal build (no OCR, no MCP)
 
 # Windows (native, no OCR):
-cargo install --path . --no-default-features --features ingest,mcp
+cargo install --locked --path cli --no-default-features --features ingest,mcp
 ```
 
 ## Quick start

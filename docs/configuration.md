@@ -456,7 +456,7 @@ included. The `llm` block is used by `lore ingest` (enrichment during
 indexing) and `lore enrich` (standalone re-enrichment).
 
 ```bash
-cargo install --path . --features llm
+cargo install --locked --path cli --features llm
 ```
 
 If lore is built without the `llm` feature (the default), any `llm` section
