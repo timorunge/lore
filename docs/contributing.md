@@ -133,7 +133,9 @@ here first when an update fails to compile:
 | `tree-sitter-language-pack` | 1.14.3 | 1.15.0 adds required fields to `ProcessConfig` that `kreuzberg` 4.10.2 does not set, so it fails to compile with the `tree-sitter` feature. Unpin once kreuzberg supports it. |
 
 Only the lockfile enforces this -- the constraint is transitive, so there is no
-manifest entry to warn you.
+manifest entry to warn you. `make install` passes `--locked` for the same
+reason: plain `cargo install` ignores `Cargo.lock` and re-resolves, which
+reintroduces the break.
 
 You can also run the underlying cargo commands directly:
 

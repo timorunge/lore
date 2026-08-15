@@ -17,7 +17,7 @@ build:
 
 ## install: Install the binary via cargo install
 install:
-	cargo install --force --path cli $(FEATURES)
+	cargo install --force --locked --path cli $(FEATURES)
 
 ## update: Update all Cargo dependencies
 update:
