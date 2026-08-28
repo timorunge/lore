@@ -474,6 +474,7 @@ pub async fn ingest(
             }
             Err(e) => {
                 let err_str = e.to_string();
+                tracing::debug!(source = %source_label, error = %err_str, "source failed");
                 observer.on_source_error(i, source_label, &err_str);
                 source_errors.push((source_label.clone(), err_str));
             }

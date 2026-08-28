@@ -231,9 +231,21 @@ fn detect_format(path: &Path, mime: Option<&str>) -> Option<String> {
 pub async fn list_files(base: &Path, pattern: &str, max: Option<usize>) -> Result<Vec<PathBuf>> {
     let base = base.to_path_buf();
     let pattern = pattern.to_owned();
-    tokio::task::spawn_blocking(move || list_files_sync(&base, &pattern, max))
-        .await
-        .context("list_files panicked")?
+    match tokio::task::spawn_blocking(move || list_files_sync(&base, &pattern, max)).await {
+        Ok(r) => r,
+        Err(e) => {
+            let detail = if e.is_panic() {
+                let p = e.into_panic();
+                p.downcast_ref::<&str>()
+                    .map(|s| (*s).to_owned())
+                    .or_else(|| p.downcast_ref::<String>().cloned())
+                    .unwrap_or_else(|| "unknown panic".to_owned())
+            } else {
+                "task cancelled".to_owned()
+            };
+            anyhow::bail!("list_files failed: {detail}")
+        }
+    }
 }
 
 /// Synchronous file walk used by `list_files`; runs in a blocking thread.

@@ -379,6 +379,8 @@ fn build_instructions(info: &store::StoreInfo) -> String {
 struct ServeWatchObserver {
     stores: Arc<StoreSet>,
     meta: Arc<std::sync::RwLock<SharedMeta>>,
+    /// Set once the transport has exited; suppresses teardown-only errors.
+    shutting_down: Arc<std::sync::atomic::AtomicBool>,
 }
 
 #[cfg(feature = "ingest")]
@@ -423,6 +425,13 @@ impl lore::ingest::watch::WatchObserver for ServeWatchObserver {
         refresh_meta(&self.stores, &self.meta);
     }
     fn on_cycle_error(&self, context: &str, error: &anyhow::Error) {
+        if self
+            .shutting_down
+            .load(std::sync::atomic::Ordering::Acquire)
+        {
+            tracing::debug!(%error, "{context} (during shutdown)");
+            return;
+        }
         tracing::error!(%error, "{context}");
     }
 }
@@ -465,15 +474,20 @@ pub async fn run(opts: ServeOptions<'_>) -> Result<()> {
     spawn_store_watcher(&stores, &meta);
 
     #[cfg(feature = "ingest")]
+    let mut watch_tasks: Vec<tokio::task::JoinHandle<()>> = Vec::new();
+    #[cfg(feature = "ingest")]
+    let shutting_down = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    #[cfg(feature = "ingest")]
     if watch {
         for rc in configs {
-            spawn_watch_loop(
+            watch_tasks.push(spawn_watch_loop(
                 rc.config.clone(),
                 rc.config_path.clone(),
                 &stores,
                 &meta,
                 watch_debounce,
-            );
+                Arc::clone(&shutting_down),
+            ));
         }
     }
     #[cfg(not(feature = "ingest"))]
@@ -481,10 +495,23 @@ pub async fn run(opts: ServeOptions<'_>) -> Result<()> {
         anyhow::bail!("--watch requires the `ingest` feature");
     }
 
-    match transport {
+    let result = match transport {
         Transport::Stdio => run_stdio(stores, meta).await,
         Transport::Http => run_http(stores, meta, host, port, token).await,
+    };
+
+    // Stop watch loops before the runtime is torn down. Otherwise an ingest
+    // cycle in flight has its `spawn_blocking` walks cancelled during shutdown
+    // and every source is reported as a failure -- pure exit noise.
+    #[cfg(feature = "ingest")]
+    {
+        shutting_down.store(true, std::sync::atomic::Ordering::Release);
+        for task in watch_tasks {
+            task.abort();
+        }
     }
+
+    result
 }
 
 #[cfg(feature = "ingest")]
@@ -494,10 +521,12 @@ fn spawn_watch_loop(
     stores: &Arc<StoreSet>,
     meta: &Arc<std::sync::RwLock<SharedMeta>>,
     debounce_secs: u64,
-) {
+    shutting_down: Arc<std::sync::atomic::AtomicBool>,
+) -> tokio::task::JoinHandle<()> {
     let observer = Box::new(ServeWatchObserver {
         stores: Arc::clone(stores),
         meta: Arc::clone(meta),
+        shutting_down: Arc::clone(&shutting_down),
     });
     tokio::spawn(async move {
         if let Err(e) = lore::ingest::watch::watch(
@@ -513,9 +542,13 @@ fn spawn_watch_loop(
         )
         .await
         {
+            if shutting_down.load(std::sync::atomic::Ordering::Acquire) {
+                tracing::debug!(error = %e, "watch loop stopped during shutdown");
+                return;
+            }
             tracing::error!(error = %e, "watch loop failed");
         }
-    });
+    })
 }
 
 /// Spawn a background task that watches store directories for changes written
