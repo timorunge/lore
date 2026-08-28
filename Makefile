@@ -37,9 +37,16 @@ lint-conventions:
 
 ## lint: Run clippy (all feature combos)
 lint:
-	cargo clippy --all-targets $(FEATURES) -- -D warnings
-	cargo clippy --all-targets --no-default-features -- -D warnings
-	cargo clippy --all-targets -- -D warnings
+	cargo clippy --workspace --all-targets $(FEATURES) -- -D warnings
+	cargo clippy --workspace --all-targets --no-default-features -- -D warnings
+	cargo clippy --workspace --all-targets -- -D warnings
+# Per-package, because `--workspace --no-default-features` does NOT lint these
+# crates featureless: xtask depends on lore/lore-cli with `llm,mcp,s3` enabled,
+# and Cargo unifies features across the workspace, so `ingest` is always on.
+# Without these two lines a featureless build can be broken on main and every
+# gate stays green (it was, for weeks).
+	cargo clippy -p lore --all-targets --no-default-features -- -D warnings
+	cargo clippy -p lore-cli --all-targets --no-default-features -- -D warnings
 
 ## test-quick: Run tests (default features only)
 test-quick:
@@ -47,9 +54,9 @@ test-quick:
 
 ## test: Run tests (all feature combos)
 test:
-	cargo test $(FEATURES)
-	cargo test --no-default-features
-	cargo test
+	cargo test --workspace $(FEATURES)
+	cargo test --workspace --no-default-features
+	cargo test --workspace
 
 ## fuzz: Run all fuzz targets for 60 seconds each (requires cargo-fuzz and nightly)
 fuzz:

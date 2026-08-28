@@ -5,9 +5,11 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 use clap::{CommandFactory, Parser};
 
 use lore_cli::cli::args::{Cli, Command};
-use lore_cli::cli::{
-    make_prefixes, resolve_all_configs, resolve_stores, run_per_config, run_per_config_async,
-};
+#[cfg(feature = "ingest")]
+use lore_cli::cli::make_prefixes;
+#[cfg(any(feature = "ingest", feature = "llm"))]
+use lore_cli::cli::run_per_config_async;
+use lore_cli::cli::{resolve_all_configs, resolve_stores, run_per_config};
 
 /// Print output, applying width-capping for human-readable (non-JSON) modes.
 fn print_output(text: &str, json: bool) {
@@ -58,6 +60,7 @@ fn main() {
                     lore_cli::cli::init::init(cli.config.into_iter().next())
                 }
             }
+            #[cfg(feature = "ingest")]
             Command::Ingest {
                 recreate,
                 dry_run,
@@ -236,6 +239,7 @@ fn main() {
                 })
                 .await
             }
+            #[cfg(feature = "ingest")]
             Command::Watch {
                 debounce,
                 interval,
@@ -252,6 +256,7 @@ fn main() {
                 )
                 .await
             }
+            #[cfg(feature = "ingest")]
             Command::Preview {
                 paths,
                 limit,
@@ -302,6 +307,7 @@ fn main() {
                 )
                 .await
             }
+            #[cfg(feature = "ingest")]
             Command::Status { json, remote } => {
                 run_per_config_async(
                     cli.config,
@@ -324,6 +330,7 @@ fn main() {
             Command::Maintain { action } => {
                 use lore_cli::cli::args::MaintainAction;
                 match action {
+                    #[cfg(feature = "ingest")]
                     Some(MaintainAction::Clean { scope }) => lore_cli::cli::maintain::clean(scope),
                     other => {
                         let action = other.unwrap_or(MaintainAction::Check { json: false });
@@ -353,6 +360,7 @@ fn main() {
                                         &rc.config.store,
                                         pfx,
                                     ),
+                                    #[cfg(feature = "ingest")]
                                     MaintainAction::Clean { .. } => unreachable!(),
                                     MaintainAction::Health => lore_cli::cli::maintain::health(
                                         &rc.config_path,

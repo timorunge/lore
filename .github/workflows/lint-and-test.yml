@@ -75,6 +75,13 @@ jobs:
         run: cargo clippy --all-targets -- -D warnings
       - name: Clippy (no default features)
         run: cargo clippy --all-targets --no-default-features --workspace -- -D warnings
+      # Per-package, because the --workspace run above does NOT lint these crates
+      # featureless: xtask depends on lore/lore-cli with llm,mcp,s3 enabled, and
+      # Cargo unifies features across the workspace, so `ingest` is always on.
+      - name: Clippy (no default features, per package)
+        run: |
+          cargo clippy -p lore --all-targets --no-default-features -- -D warnings
+          cargo clippy -p lore-cli --all-targets --no-default-features -- -D warnings
       - name: Clippy (all features)
         if: runner.os != 'Windows'
         run: cargo clippy --all-targets --all-features -- -D warnings

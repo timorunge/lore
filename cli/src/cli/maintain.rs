@@ -4,9 +4,12 @@ use anyhow::{Context, Result};
 use indicatif::MultiProgress;
 use serde::Serialize;
 
+#[cfg(feature = "ingest")]
 use lore::cache::{CacheScope, clear_cache};
 use lore::config::StoreConfig;
-use lore::fmt::{format_bytes, plural, to_json_pretty};
+#[cfg(feature = "ingest")]
+use lore::fmt::format_bytes;
+use lore::fmt::{plural, to_json_pretty};
 use lore::output::OutputMode;
 use lore::store;
 use lore::types::SourceId;
@@ -62,6 +65,7 @@ fn ensure_store_exists(store_path: &Path) -> Result<()> {
 }
 
 /// Clear cached downloads, git repos, or temporary files.
+#[cfg(feature = "ingest")]
 pub fn clean(scope: CacheScope) -> Result<()> {
     let mp = MultiProgress::new();
     let paint = crate::terminal::stderr_painter();

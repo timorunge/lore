@@ -14,7 +14,6 @@ pub mod ingest;
 /// Project initialization and config file generation.
 pub mod init;
 /// Store integrity checking and maintenance.
-#[cfg(feature = "ingest")]
 pub mod maintain;
 /// Document preview and chunking inspection.
 #[cfg(feature = "ingest")]
