@@ -43,7 +43,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.93"
-      - run: cargo check --all-features
+      # --workspace, or this only checks the root `lore` package and lore-cli's
+      # MSRV compliance is never verified.
+      - run: cargo check --workspace --all-features
 
   deny:
     name: Cargo deny
