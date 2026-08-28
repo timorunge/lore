@@ -71,8 +71,10 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ steps.toolchain.outputs.cachekey }}-
+      # Every leg needs --workspace. Without it Cargo lints only the root `lore`
+      # package and lore-cli is never checked.
       - name: Clippy (default features)
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
       # xtask is excluded because it depends on lore/lore-cli with llm,mcp,s3
       # enabled (deliberately -- it generates docs from the full CLI surface),
       # and Cargo unifies features across a workspace. Without --exclude this
@@ -87,10 +89,10 @@ jobs:
           cargo clippy -p lore-cli --all-targets --no-default-features -- -D warnings
       - name: Clippy (all features)
         if: runner.os != 'Windows'
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - name: Clippy (all features, no OCR)
         if: runner.os == 'Windows'
-        run: cargo clippy --all-targets --features ingest,mcp,llm,s3,iwork,tree-sitter -- -D warnings
+        run: cargo clippy --workspace --all-targets --features ingest,mcp,llm,s3,iwork,tree-sitter -- -D warnings
 
   doc:
     name: Docs
@@ -112,7 +114,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ steps.toolchain.outputs.cachekey }}-
-      - run: cargo doc --no-deps --all-features
+      - run: cargo doc --no-deps --workspace --all-features
         env:
           RUSTDOCFLAGS: -D warnings
 
@@ -144,17 +146,19 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ steps.toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ steps.toolchain.outputs.cachekey }}-
+      # Every leg needs --workspace. Without it Cargo runs only the root `lore`
+      # package, so lore-cli's 100+ integration tests never execute at all.
       - name: Test (default features)
-        run: cargo test
+        run: cargo test --workspace
       - name: Test (no default features)
         # --exclude xtask for the same feature-unification reason as clippy above.
         run: cargo test --no-default-features --workspace --exclude xtask
       - name: Test (all features)
         if: runner.os != 'Windows'
-        run: cargo test --all-features
+        run: cargo test --workspace --all-features
       - name: Test (all features, no OCR)
         if: runner.os == 'Windows'
-        run: cargo test --features ingest,mcp,llm,s3,iwork,tree-sitter
+        run: cargo test --workspace --features ingest,mcp,llm,s3,iwork,tree-sitter
 
   fuzz:
     name: Fuzz smoke

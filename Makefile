@@ -56,7 +56,9 @@ lint:
 
 ## test-quick: Run tests (default features only)
 test-quick:
-	cargo test
+	# --workspace, or Cargo runs only the root `lore` package and skips
+	# lore-cli's integration suite entirely.
+	cargo test --workspace
 
 ## test: Run tests (all feature combos)
 test:
@@ -77,7 +79,7 @@ fuzz:
 
 ## doc: Build docs (fails on warnings)
 doc:
-	RUSTDOCFLAGS="-D warnings" cargo doc --no-deps $(FEATURES)
+	RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace $(FEATURES)
 
 ## generate-docs: Regenerate doc tables from code annotations
 generate-docs:
