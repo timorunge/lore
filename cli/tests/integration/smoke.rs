@@ -1,9 +1,12 @@
+#[cfg(feature = "ingest")]
 use std::fs;
 
 use predicates::prelude::*;
 use tempfile::TempDir;
 
-use crate::helpers::{collect_json, lore, run_ingest};
+use crate::helpers::lore;
+#[cfg(feature = "ingest")]
+use crate::helpers::{collect_json, run_ingest};
 
 #[test]
 fn completions_bash() {
@@ -70,6 +73,8 @@ fn init_rejects_existing_config() {
         .stderr(predicate::str::contains("already exists"));
 }
 
+// Drives the `ingest` subcommand directly, so it needs the feature.
+#[cfg(feature = "ingest")]
 #[test]
 fn force_flag_reingests_all_documents() {
     let dir = TempDir::new().unwrap();
@@ -126,6 +131,8 @@ fn force_flag_reingests_all_documents() {
     );
 }
 
+// Asserts on `lore ingest` config parsing, so it needs the feature.
+#[cfg(feature = "ingest")]
 #[test]
 fn invalid_config_gives_clear_error() {
     let dir = TempDir::new().unwrap();

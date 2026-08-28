@@ -73,11 +73,14 @@ jobs:
             ${{ runner.os }}-cargo-${{ steps.toolchain.outputs.cachekey }}-
       - name: Clippy (default features)
         run: cargo clippy --all-targets -- -D warnings
+      # xtask is excluded because it depends on lore/lore-cli with llm,mcp,s3
+      # enabled (deliberately -- it generates docs from the full CLI surface),
+      # and Cargo unifies features across a workspace. Without --exclude this
+      # step enables `ingest` anyway and lints nothing featureless.
       - name: Clippy (no default features)
-        run: cargo clippy --all-targets --no-default-features --workspace -- -D warnings
-      # Per-package, because the --workspace run above does NOT lint these crates
-      # featureless: xtask depends on lore/lore-cli with llm,mcp,s3 enabled, and
-      # Cargo unifies features across the workspace, so `ingest` is always on.
+        run: cargo clippy --all-targets --no-default-features --workspace --exclude xtask -- -D warnings
+      # Also per-package, so a future workspace member cannot re-poison the run
+      # above the way xtask did.
       - name: Clippy (no default features, per package)
         run: |
           cargo clippy -p lore --all-targets --no-default-features -- -D warnings
@@ -144,7 +147,8 @@ jobs:
       - name: Test (default features)
         run: cargo test
       - name: Test (no default features)
-        run: cargo test --no-default-features --workspace
+        # --exclude xtask for the same feature-unification reason as clippy above.
+        run: cargo test --no-default-features --workspace --exclude xtask
       - name: Test (all features)
         if: runner.os != 'Windows'
         run: cargo test --all-features

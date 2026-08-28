@@ -38,13 +38,19 @@ lint-conventions:
 ## lint: Run clippy (all feature combos)
 lint:
 	cargo clippy --workspace --all-targets $(FEATURES) -- -D warnings
-	cargo clippy --workspace --all-targets --no-default-features -- -D warnings
 	cargo clippy --workspace --all-targets -- -D warnings
-# Per-package, because `--workspace --no-default-features` does NOT lint these
-# crates featureless: xtask depends on lore/lore-cli with `llm,mcp,s3` enabled,
-# and Cargo unifies features across the workspace, so `ingest` is always on.
-# Without these two lines a featureless build can be broken on main and every
-# gate stays green (it was, for weeks).
+# xtask must be excluded from every featureless run. It depends on lore and
+# lore-cli with `llm,mcp,s3` enabled (deliberately: it generates the docs from
+# the full CLI surface, so dropping those silently deletes rows from the
+# generated tables), and Cargo unifies features across a workspace. Without
+# --exclude, `--workspace --no-default-features` enables `ingest` anyway and
+# lints nothing featureless: a broken featureless build sat on main for weeks
+# with this gate green. Measured at 7b7996a: --workspace = 0 errors,
+# --workspace --exclude xtask = 18.
+	cargo clippy --workspace --exclude xtask --all-targets --no-default-features -- -D warnings
+# Also per-package, so a future workspace member that enables lore/llm cannot
+# re-poison the run above the way xtask did. These two are what actually ship:
+# the featureless library, and lore-cli as a search-only binary.
 	cargo clippy -p lore --all-targets --no-default-features -- -D warnings
 	cargo clippy -p lore-cli --all-targets --no-default-features -- -D warnings
 
@@ -55,7 +61,8 @@ test-quick:
 ## test: Run tests (all feature combos)
 test:
 	cargo test --workspace $(FEATURES)
-	cargo test --workspace --no-default-features
+	# --exclude xtask for the same feature-unification reason as `lint` above.
+	cargo test --workspace --exclude xtask --no-default-features
 	cargo test --workspace
 
 ## fuzz: Run all fuzz targets for 60 seconds each (requires cargo-fuzz and nightly)
