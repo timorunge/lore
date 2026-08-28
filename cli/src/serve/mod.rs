@@ -114,6 +114,12 @@ impl LoreServer {
     }
 }
 
+// `async` is required by the ServerHandler trait signatures; several of these
+// impls have no `.await` and cannot drop it. clippy::unused_async_trait_impl is
+// a pedantic lint added in Rust 1.98; allow(unknown_lints) keeps the attribute
+// harmless on the 1.93 MSRV and other older toolchains that lack the name.
+#[allow(unknown_lints)]
+#[allow(clippy::unused_async_trait_impl)]
 impl ServerHandler for LoreServer {
     /// Return server info with capabilities and the current knowledge-base instructions.
     fn get_info(&self) -> ServerInfo {
