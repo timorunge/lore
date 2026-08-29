@@ -28,10 +28,14 @@ cargo run -- --help
 ```
 
 `make setup` installs a pre-commit hook that runs `make fmt`,
-`make lint-conventions`, and `make lint` before every commit. Run it once
-after cloning. The hook keeps the tree clean without requiring a full test
-run on every commit (tests run in CI). If you need to land a WIP commit
-quickly, `git commit --no-verify` skips the hook, but use it sparingly.
+`make lint-conventions`, `make lint`, `make check-docs`, and the featureless
+test leg (`cargo test --workspace --exclude xtask --no-default-features`)
+before every commit. Run it once after cloning. The hook stops short of the
+full test matrix (that runs in CI), but it does run the featureless leg:
+clippy alone cannot catch a test suite that compiles yet fails at runtime
+because the subcommand it drives is feature-gated away. If you need to land a
+WIP commit quickly, `git commit --no-verify` skips the hook, but use it
+sparingly.
 
 The default build includes the `ocr` feature, which requires cmake. To build
 without it:

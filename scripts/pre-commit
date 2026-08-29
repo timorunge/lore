@@ -4,3 +4,9 @@ make fmt
 make lint-conventions
 make lint
 make check-docs
+# The featureless test leg, not the whole `make test`. Clippy cannot catch a
+# test suite that compiles but fails at runtime because the `ingest`
+# subcommand it drives does not exist without the feature -- that shape got
+# through the hook once already. This is the one leg that catches it, and it
+# is ~40s warm, unlike the full matrix.
+cargo test --workspace --exclude xtask --no-default-features
