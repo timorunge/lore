@@ -94,6 +94,7 @@ check-docs: generate-docs
 check: fmt lint-conventions lint doc test check-docs
 	@if command -v cargo-deny >/dev/null 2>&1; then \
 		cargo deny check; \
+		cargo deny --manifest-path fuzz/Cargo.toml check advisories; \
 	else \
 		echo "note: cargo-deny not installed; skipping license/advisory check (run: cargo install cargo-deny)"; \
 	fi

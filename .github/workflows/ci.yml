@@ -54,3 +54,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: EmbarkStudios/cargo-deny-action@v2
+      # fuzz/ declares its own [workspace] and therefore its own Cargo.lock,
+      # which the step above does not see: it resolves the root lockfile only.
+      # Without this the fuzz lockfile rots unaudited (it accumulated 7
+      # advisories over four months before anyone looked).
+      #
+      # advisories only: the harness legitimately fails `licenses` (libfuzzer-sys
+      # is NCSA) and `bans` (its path dependency on the parent crate reads as a
+      # wildcard). Neither is a supply-chain signal worth gating on.
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: fuzz/Cargo.toml
+          command: check
+          command-arguments: advisories
