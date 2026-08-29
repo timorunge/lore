@@ -10,6 +10,21 @@ updates:
       all:
         patterns: ["*"]
 
+  # fuzz/ declares its own [workspace], so it has a separate Cargo.lock that the
+  # "/" entry above never touches and that `cargo deny check` (which reads the
+  # root lockfile) never audits. Without this it drifts silently: it sat
+  # untouched from 2026-05-04 to 2026-08-29 and accumulated advisories that were
+  # already fixed at the root.
+  - package-ecosystem: cargo
+    directory: "/fuzz"
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencies]
+    groups:
+      all:
+        patterns: ["*"]
+
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
