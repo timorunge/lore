@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **`exec` raw output mode** -- `output: raw` consumes a command's entire
+  stdout as one document instead of parsing it as JSONL, with optional
+  `source_key` and `format` fields
+- **`exec` output limits** -- `max_output_bytes` (default 10 MiB) bounds
+  stdout reads and kills the child process on timeout
+- **`lore maintain health`** -- one-screen report of config validity,
+  compiled features, LLM client initialization, and store reachability
+- **Store provenance** -- `lore.meta` records a chunk-config fingerprint
+  and the writing version, and warns when the store was built with
+  different settings
+
+### Fixed
+
+- `serve --watch` no longer reports every source as failed when the MCP
+  transport exits before the initial ingest finishes; the failures were
+  cancelled filesystem walks during runtime shutdown, not real errors
+- Shell scripts and other source files whose extension maps to a MIME
+  type kreuzberg rejects (`.sh`, `.sql`, `.ts`, `.pl`, `.php`) now fall
+  back to the UTF-8 text probe instead of failing with "Unsupported
+  format"
+- The featureless build (`--no-default-features`) compiles again:
+  ingest-only CLI commands are now gated to match their argument
+  definitions
+- `lore --version` no longer prints a duplicate `v` prefix
+- `make install` passes `--locked`, so installing no longer re-resolves
+  the lockfile and reintroduces held-back dependency breakage
+
+### Security
+
+- Updated both workspace lockfiles, clearing RUSTSEC-2026-0258 (h2) at
+  the root and seven advisories in the fuzz workspace, which had gone
+  unaudited because it declares its own `[workspace]`
+
 ## [0.1.0] -- 2026-05-04
 
 Initial release.
