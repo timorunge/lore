@@ -126,6 +126,28 @@ Individual targets are also available:
 All checks must pass. Zero tolerance for clippy warnings (`-D warnings` treats
 them as errors, matching CI).
 
+### Two ways a green gate lies
+
+**Your toolchain is not CI's.** Local stable 1.95 ran `make lint` green while
+CI's 1.98 failed: `clippy::unused_async_trait_impl` is new in 1.98 and
+pedantic-by-default. Three minor versions of drift hid a hard CI failure. Run
+`make ci-local` (real workflows in Linux containers via act) before any push
+touching lint configuration, feature gating, or CI. Two limits: act has no
+Windows runner, and the cargo-deny action fails under act on Apple silicon, so
+run `cargo deny` directly.
+
+**A gate that passes has not been shown to catch anything.** Validate a gate
+fix by reintroducing the regression, confirming the gate fails, then restoring.
+Two defects here survived green runs: `make lint` reported 0 errors on an
+ungated ingest-dependent test suite, because it compiles and only fails at
+runtime; and three mid-history commits passed locally but would each have
+failed CI, because `--workspace` landed before the lint allow it needed.
+
+Also verify the **installed** binary, not the tree. Twice the source was correct
+while `lore` on PATH was several commits stale. After landing a user-facing
+change, `cargo install --path cli --locked` and re-run the original repro
+against it.
+
 ### Held-back dependencies
 
 Some dependencies are deliberately not at their newest version. `make update`
