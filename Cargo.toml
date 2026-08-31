@@ -84,7 +84,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 reqwest = { version = "0.13", features = ["json", "gzip", "brotli", "stream"], optional = true }
 url = "2"
 dirs = "6"
-quick-xml = { version = "0.41", optional = true }
+quick-xml = { version = "0.42", optional = true }
 futures = { version = "0.3", optional = true }
 fd-lock = { version = "4", optional = true }
 notify = { version = "8", optional = true }
