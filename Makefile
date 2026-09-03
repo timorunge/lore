@@ -6,7 +6,7 @@ export RUSTFLAGS ?= -W dead_code -W unused_imports -W unused_variables -W unused
 
 .DEFAULT_GOAL := help
 
-.PHONY: build install update fmt fmt-fix lint-conventions lint test-quick test fuzz doc generate-docs check-docs check ci-local setup clean help
+.PHONY: build install update fmt fmt-fix lint-conventions lint test-quick test dist-check fuzz doc generate-docs check-docs check ci-local setup clean help
 
 # Prerequisites:
 #   ocr feature: cmake must be installed (used by kreuzberg-tesseract)
@@ -66,6 +66,15 @@ test:
 	# --exclude xtask for the same feature-unification reason as `lint` above.
 	cargo test --workspace --exclude xtask --no-default-features
 	cargo test --workspace
+
+## dist-check: Build the profile that actually SHIPS (fat-LTO release, slow)
+### `[profile.dist]` in Cargo.toml is what cargo-dist publishes to the Homebrew tap,
+### and nothing built it: `make build` and `make test` both use dev/test profiles. LTO
+### and codegen-units=1 fail at LINK time, so a `cargo check` cannot see those failures
+### and only a real BUILD can. Manual rather than part of `check` because a fat-LTO
+### build is minutes, not seconds; run it before cutting a release.
+dist-check:
+	cargo build --profile dist --workspace
 
 ## fuzz: Run all fuzz targets for 60 seconds each (requires cargo-fuzz and nightly)
 fuzz:

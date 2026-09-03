@@ -112,6 +112,7 @@ Individual targets are also available:
 | `make lint` | Run clippy (all feature combos) |
 | `make test-quick` | Run tests (default features only) |
 | `make test` | Run tests (all feature combos) |
+| `make dist-check` | Build the profile that actually SHIPS (fat-LTO release, slow) |
 | `make fuzz` | Run all fuzz targets for 60 seconds each (requires cargo-fuzz and nightly) |
 | `make doc` | Build docs (fails on warnings) |
 | `make generate-docs` | Regenerate doc tables from code annotations |
