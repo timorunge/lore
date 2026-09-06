@@ -73,7 +73,11 @@ test:
 ### and codegen-units=1 fail at LINK time, so a `cargo check` cannot see those failures
 ### and only a real BUILD can. Manual rather than part of `check` because a fat-LTO
 ### build is minutes, not seconds; run it before cutting a release.
+### The changelog check rides here because dist-check IS the release gate: at a
+### version bump "does CHANGELOG.md document this version" is mechanical, while a
+### per-commit rule would fail every refactor and train whitespace-line appeasement.
 dist-check:
+	scripts/changelog-release-check.sh
 	cargo build --profile dist --workspace
 
 ## fuzz: Run all fuzz targets for 60 seconds each (requires cargo-fuzz and nightly)
