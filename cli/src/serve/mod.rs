@@ -10,7 +10,7 @@ use rmcp::handler::server::tool::ToolCallContext;
 use rmcp::model::{
     CallToolRequestParams, CallToolResponse, ListResourceTemplatesResult, ListResourcesResult,
     ListToolsResult, PaginatedRequestParams, ReadResourceRequestParams, ReadResourceResponse,
-    ServerCapabilities, ServerInfo,
+    ServerCapabilities, ServerConfig,
 };
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData, RoleServer, ServerHandler, ServiceExt};
@@ -121,15 +121,15 @@ impl LoreServer {
 #[allow(unknown_lints)]
 #[allow(clippy::unused_async_trait_impl)]
 impl ServerHandler for LoreServer {
-    /// Return server info with capabilities and the current knowledge-base instructions.
-    fn get_info(&self) -> ServerInfo {
+    /// Return server capabilities and the current knowledge-base instructions.
+    fn get_info(&self) -> ServerConfig {
         let instructions = self
             .meta
             .read()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .instructions
             .clone();
-        ServerInfo::new(
+        ServerConfig::new(
             ServerCapabilities::builder()
                 .enable_tools()
                 .enable_resources()

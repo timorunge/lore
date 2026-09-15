@@ -157,13 +157,16 @@ here first when an update fails to compile:
 
 | Crate | Held at | Why |
 |-------|---------|-----|
-| `tree-sitter-language-pack` | 1.14.3 | 1.15.0 adds required fields to `ProcessConfig` that `kreuzberg` 4.10.2 does not set, so it fails to compile with the `tree-sitter` feature. Unpin once kreuzberg supports it. |
 | `quick-xml` | 0.41 | 0.42 is a breaking API change (`Reader::decoder` removed, `local_name()` now yields `&str`) costing ~28 call-site fixes across the feed, sitemap and youtube loaders. It buys nothing: `kreuzberg` still depends on 0.41, so bumping only duplicates the crate in the tree, and `cargo deny` reports no advisory against 0.41. Revisit when kreuzberg moves. |
 
-Only the lockfile enforces this -- the constraint is transitive, so there is no
-manifest entry to warn you. `make install` passes `--locked` for the same
-reason: plain `cargo install` ignores `Cargo.lock` and re-resolves, which
-reintroduces the break.
+`quick-xml` is held by the manifest requirement itself, so `cargo update`
+cannot bump it past 0.41. `make install` still passes `--locked` so an install
+reproduces the audited tree rather than re-resolving it.
+
+The `tree-sitter-language-pack` hold recorded in 7b7996a is gone. It was only
+ever a lockfile pin, and `kreuzberg` 4.10.3 now requires `>= 1.16.1` itself, so
+the pin is no longer representable and no longer needed: 1.20.0 compiles with
+`--all-features`.
 
 Two dependencies show a newer major on crates.io that is a pre-release, not a
 stable bump: `notify` (9.0.0-rc) and `zip` (9.0.0-pre). Both stay on their

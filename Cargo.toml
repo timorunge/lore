@@ -83,7 +83,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 reqwest = { version = "0.13", features = ["json", "gzip", "brotli", "stream"], optional = true }
 url = "2"
-dirs = "6"
+dirs = "7"
 quick-xml = { version = "0.41", optional = true }
 futures = { version = "0.3", optional = true }
 fd-lock = { version = "4", optional = true }
@@ -105,7 +105,7 @@ kreuzberg = { version = "4.9", default-features = false, optional = true, featur
 zip = { version = "8", default-features = false, features = ["deflate"], optional = true }
 tar = { version = "0.4", optional = true }
 flate2 = { version = "1", optional = true }
-zstd = { version = "0.13", optional = true }
+zstd = { version = "0.14", optional = true }
 bzip2 = { version = "0.6", optional = true }
 xz2 = { version = "0.1", optional = true }
 rmcp = { version = "3.1", features = ["client", "transport-child-process", "transport-streamable-http-client-reqwest"], optional = true }
