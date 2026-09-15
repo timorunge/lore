@@ -160,13 +160,9 @@ here first when an update fails to compile:
 | `quick-xml` | 0.41 | 0.42 is a breaking API change (`Reader::decoder` removed, `local_name()` now yields `&str`) costing ~28 call-site fixes across the feed, sitemap and youtube loaders. It buys nothing: `kreuzberg` still depends on 0.41, so bumping only duplicates the crate in the tree, and `cargo deny` reports no advisory against 0.41. Revisit when kreuzberg moves. |
 
 `quick-xml` is held by the manifest requirement itself, so `cargo update`
-cannot bump it past 0.41. `make install` still passes `--locked` so an install
-reproduces the audited tree rather than re-resolving it.
-
-The `tree-sitter-language-pack` hold recorded in 7b7996a is gone. It was only
-ever a lockfile pin, and `kreuzberg` 4.10.3 now requires `>= 1.16.1` itself, so
-the pin is no longer representable and no longer needed: 1.20.0 compiles with
-`--all-features`.
+cannot bump it past 0.41, and `.github/dependabot.yml` ignores `0.42.x` so the
+weekly group PR does not re-propose it. `make install` passes `--locked` so an
+install reproduces the audited tree rather than re-resolving it.
 
 Two dependencies show a newer major on crates.io that is a pre-release, not a
 stable bump: `notify` (9.0.0-rc) and `zip` (9.0.0-pre). Both stay on their

@@ -9,6 +9,11 @@ updates:
     groups:
       all:
         patterns: ["*"]
+    # quick-xml 0.42 is held (see docs/contributing.md). Scoped to 0.42, not to
+    # the crate, so 0.43 still reaches us once the hold's reason expires.
+    ignore:
+      - dependency-name: quick-xml
+        versions: ["0.42.x"]
 
   # fuzz/ declares its own [workspace], so it has a separate Cargo.lock that the
   # "/" entry above never touches and that `cargo deny check` (which reads the
