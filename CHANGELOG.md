@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- `lore status` no longer reports documents inside archives as deleted on
+  every run; members are stored as `{archive}#{member}` but only the
+  archive file is walked, so they were never marked as seen
 - `serve --watch` no longer reports every source as failed when the MCP
   transport exits before the initial ingest finishes; the failures were
   cancelled filesystem walks during runtime shutdown, not real errors
