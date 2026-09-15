@@ -10,7 +10,7 @@ use lore::config::{IngestConfig, SourceConfig, UpdateMode};
 use lore::fmt::plural;
 use lore::ingest::loaders::file::list_files;
 use lore::store::Store;
-use lore::types::{SourceId, SourceType, StampsMeta, source_id};
+use lore::types::{DocMeta, SourceId, SourceType, StampsMeta, source_id};
 use lore::util::relativize_path;
 
 use crate::cli::LinePrefix;
@@ -82,10 +82,11 @@ pub async fn status(
             let base = Path::new(path_str);
 
             if base.is_file() {
-                classify_file(
+                classify_archive_or_file(
                     base,
                     &cwd,
                     &all_stamps,
+                    &all_docs,
                     &mut seen_local_ids,
                     &mut entries,
                     &mut unchanged_count,
@@ -106,10 +107,11 @@ pub async fn status(
             };
 
             for file_path in &paths {
-                classify_file(
+                classify_archive_or_file(
                     file_path,
                     &cwd,
                     &all_stamps,
+                    &all_docs,
                     &mut seen_local_ids,
                     &mut entries,
                     &mut unchanged_count,
@@ -303,7 +305,41 @@ fn print_status_summary(
     }
 }
 
-/// Classify a single file as added, changed, or unchanged and record it.
+/// Classify a plain file, or an archive by whether its members are already stored.
+///
+/// Archives are stored as `{archive}#{member}` entries only -- the archive path
+/// itself never gets a stamp -- so `classify_file` would report every archive as
+/// added on every run. The extracted members carry the mtime of the extracted
+/// copy rather than of the archive, so freshness cannot be derived from them;
+/// treat an archive with stored members as unchanged and let ingest decide.
+fn classify_archive_or_file(
+    path: &Path,
+    cwd: &Path,
+    stamps: &HashMap<SourceId, StampsMeta>,
+    docs: &HashMap<SourceId, DocMeta>,
+    seen: &mut HashSet<SourceId>,
+    entries: &mut Vec<DiffEntry>,
+    unchanged: &mut usize,
+) {
+    let key = relativize_path(path, cwd);
+    let sid = source_id(&key);
+
+    if !stamps.contains_key(&sid) {
+        let member_prefix = format!("{key}#");
+        let has_members = docs
+            .values()
+            .any(|d| d.origin == SourceType::Local && d.source.starts_with(&member_prefix));
+        if has_members {
+            seen.insert(sid);
+            *unchanged += 1;
+            return;
+        }
+    }
+
+    classify_file(path, cwd, stamps, seen, entries, unchanged);
+}
+
+/// Compare a single file against stored stamps and record its change status.
 fn classify_file(
     path: &Path,
     cwd: &Path,

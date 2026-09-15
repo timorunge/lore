@@ -504,14 +504,21 @@ fn archive_members_not_reported_deleted_by_status() {
             .collect()
     };
 
-    // The archive is still present, so its members must not be reported as
-    // deleted just because the walk only sees the archive file itself.
+    // The archive is still present and already ingested, so status must be
+    // completely clean: no deleted members, and the archive itself must not
+    // report as added just because only its members carry stamps.
     let entries = statuses(&config_path);
     assert!(
         !entries
             .iter()
             .any(|(s, st)| s.contains("bundle.zip#") && st == "deleted"),
         "archive members must not report deleted while the archive exists: {entries:?}"
+    );
+    assert!(
+        !entries
+            .iter()
+            .any(|(s, st)| s.ends_with("bundle.zip") && st == "added"),
+        "an already-ingested archive must not report as added: {entries:?}"
     );
 
     // Removing the archive must still surface its members as deleted.
