@@ -118,13 +118,23 @@ pub async fn status(
         }
     }
 
+    // Archive members are stored as `{archive}#{member}`, but the walk above
+    // only ever sees the archive file itself, so a member's own source id is
+    // never marked seen. Without this, every member reports as deleted on each
+    // run. A member is live exactly when its containing archive is still there.
     for (sid, doc) in &all_docs {
-        if doc.origin == SourceType::Local && !seen_local_ids.contains(sid) {
-            entries.push(DiffEntry {
-                source: doc.source.clone(),
-                status: DiffStatus::Deleted,
-            });
+        if doc.origin != SourceType::Local || seen_local_ids.contains(sid) {
+            continue;
         }
+        if let Some((archive, _)) = doc.source.split_once('#')
+            && seen_local_ids.contains(&source_id(archive))
+        {
+            continue;
+        }
+        entries.push(DiffEntry {
+            source: doc.source.clone(),
+            status: DiffStatus::Deleted,
+        });
     }
 
     entries.sort_by(|a, b| a.status.cmp(&b.status).then(a.source.cmp(&b.source)));

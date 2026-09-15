@@ -459,3 +459,68 @@ fn archive_entries_stable_across_reingests() {
         "source path should not contain cache path: {stdout}"
     );
 }
+
+#[test]
+fn archive_members_not_reported_deleted_by_status() {
+    let dir = TempDir::new().unwrap();
+    let docs = dir.path().join("docs");
+    fs::create_dir_all(&docs).unwrap();
+
+    let archive_path = docs.join("bundle.zip");
+    {
+        let file = fs::File::create(&archive_path).unwrap();
+        let mut zip = zip::ZipWriter::new(file);
+        let opts = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored);
+        zip.start_file("notes/alpha.md", opts).unwrap();
+        zip.write_all(b"# Alpha\n\nArchived alpha content for status.\n")
+            .unwrap();
+        zip.finish().unwrap();
+    }
+
+    let config = format!(
+        "name: Archive Status\nsources:\n  - path: {}\nstore:\n  path: test_index\n",
+        docs.display()
+    );
+    let config_path = run_ingest(dir.path(), &config);
+
+    let statuses = |config_path: &std::path::Path| -> Vec<(String, String)> {
+        let json = collect_json(
+            lore()
+                .args(["status", "--config"])
+                .arg(config_path)
+                .arg("--json"),
+        );
+        json["local"]
+            .as_array()
+            .expect("status --json returns local array")
+            .iter()
+            .map(|e| {
+                (
+                    e["source"].as_str().unwrap().to_owned(),
+                    e["status"].as_str().unwrap().to_owned(),
+                )
+            })
+            .collect()
+    };
+
+    // The archive is still present, so its members must not be reported as
+    // deleted just because the walk only sees the archive file itself.
+    let entries = statuses(&config_path);
+    assert!(
+        !entries
+            .iter()
+            .any(|(s, st)| s.contains("bundle.zip#") && st == "deleted"),
+        "archive members must not report deleted while the archive exists: {entries:?}"
+    );
+
+    // Removing the archive must still surface its members as deleted.
+    fs::remove_file(&archive_path).unwrap();
+    let entries = statuses(&config_path);
+    assert!(
+        entries
+            .iter()
+            .any(|(s, st)| s.contains("bundle.zip#") && st == "deleted"),
+        "removing the archive must report its members deleted: {entries:?}"
+    );
+}
