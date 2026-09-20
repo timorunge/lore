@@ -6,11 +6,9 @@ use tracing::warn;
 /// Parse RSS/Atom XML and extract all article URLs from `<item>` or `<entry>` elements.
 pub(crate) fn parse_feed_urls(xml: &str) -> Vec<String> {
     // The reader is constructed from a &str, so the input is already decoded
-    // UTF-8. The cached decoder below only handles further escaping; feeds
-    // using non-UTF-8 encodings declared in the XML declaration will not be
-    // re-encoded -- callers must ensure UTF-8 input.
+    // UTF-8. Feeds using non-UTF-8 encodings declared in the XML declaration
+    // will not be re-encoded -- callers must ensure UTF-8 input.
     let mut reader = Reader::from_str(xml);
-    let xml_decoder = reader.decoder();
     let mut urls = Vec::new();
     let mut in_item_or_entry = false;
     let mut in_link = false;
@@ -21,8 +19,8 @@ pub(crate) fn parse_feed_urls(xml: &str) -> Vec<String> {
                 let local = e.local_name();
                 let name = local.as_ref();
                 match name {
-                    b"item" | b"entry" => in_item_or_entry = true,
-                    b"link" if in_item_or_entry => in_link = true,
+                    "item" | "entry" => in_item_or_entry = true,
+                    "link" if in_item_or_entry => in_link = true,
                     _ => {}
                 }
             }
@@ -30,14 +28,11 @@ pub(crate) fn parse_feed_urls(xml: &str) -> Vec<String> {
                 let local = e.local_name();
                 let name = local.as_ref();
                 match name {
-                    b"item" | b"entry" => in_item_or_entry = true,
-                    b"link" if in_item_or_entry => {
+                    "item" | "entry" => in_item_or_entry = true,
+                    "link" if in_item_or_entry => {
                         for attr in e.attributes().flatten() {
-                            if attr.key.as_ref() == b"href"
-                                && let Ok(val) = attr.decoded_and_normalized_value(
-                                    XmlVersion::Implicit1_0,
-                                    xml_decoder,
-                                )
+                            if attr.key.as_ref() == "href"
+                                && let Ok(val) = attr.normalized_value(XmlVersion::Implicit1_0)
                             {
                                 let url = val.trim().to_string();
                                 if !url.is_empty() {
@@ -50,22 +45,20 @@ pub(crate) fn parse_feed_urls(xml: &str) -> Vec<String> {
                 }
             }
             Ok(Event::Text(e)) if in_link => {
-                if let Ok(text) = e.decode() {
-                    let url = text.trim().to_owned();
-                    if !url.is_empty() {
-                        urls.push(url);
-                    }
+                let url = e.xml_content(XmlVersion::Implicit1_0).trim().to_owned();
+                if !url.is_empty() {
+                    urls.push(url);
                 }
                 in_link = false;
             }
             Ok(Event::End(e)) => {
                 let name = e.local_name();
                 match name.as_ref() {
-                    b"item" | b"entry" => {
+                    "item" | "entry" => {
                         in_item_or_entry = false;
                         in_link = false;
                     }
-                    b"link" => {
+                    "link" => {
                         in_link = false;
                     }
                     _ => {}
