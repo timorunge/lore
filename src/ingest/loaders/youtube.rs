@@ -322,6 +322,7 @@ pub(crate) fn parse_youtube_url(url: &str) -> Result<YoutubeTarget> {
 /// elements (including nested `<s>` spans). HTML tags are stripped, entities
 /// decoded, and segments joined with paragraph breaks every ~`TRANSCRIPT_PARAGRAPH_BREAK_CHARS` chars.
 fn parse_transcript_xml(xml: &str) -> String {
+    use quick_xml::XmlVersion;
     use quick_xml::events::Event;
     use quick_xml::reader::Reader;
 
@@ -335,7 +336,7 @@ fn parse_transcript_xml(xml: &str) -> String {
             Ok(Event::Start(e)) => {
                 let name = e.name();
                 let tag = name.as_ref();
-                if tag == b"text" || (tag == b"p" && depth == 0) {
+                if tag == "text" || (tag == "p" && depth == 0) {
                     depth = 1;
                     current.clear();
                 } else if depth > 0 {
@@ -347,7 +348,7 @@ fn parse_transcript_xml(xml: &str) -> String {
                 if depth == 0 {
                     let name = e.name();
                     let tag = name.as_ref();
-                    if tag == b"text" || tag == b"p" {
+                    if tag == "text" || tag == "p" {
                         let cleaned = strip_html_tags(&current);
                         let cleaned = cleaned.trim();
                         if !cleaned.is_empty() {
@@ -359,20 +360,18 @@ fn parse_transcript_xml(xml: &str) -> String {
             Ok(Event::Empty(e)) => {
                 let name = e.name();
                 let tag = name.as_ref();
-                if (tag == b"text" || tag == b"p") && depth == 0 {
+                if (tag == "text" || tag == "p") && depth == 0 {
                     // Self-closing empty caption -- skip
                 }
             }
             Ok(Event::Text(e)) if depth > 0 => {
-                if let Ok(text) = e.decode() {
-                    current.push_str(&text);
-                }
+                current.push_str(&e.xml_content(XmlVersion::Implicit1_0));
             }
             Ok(Event::GeneralRef(e)) if depth > 0 => {
                 if let Ok(Some(ch)) = e.resolve_char_ref() {
                     current.push(ch);
-                } else if let Ok(name) = e.decode() {
-                    match name.as_ref() {
+                } else {
+                    match e.as_ref() {
                         "amp" => current.push('&'),
                         "lt" => current.push('<'),
                         "gt" => current.push('>'),
@@ -383,7 +382,7 @@ fn parse_transcript_xml(xml: &str) -> String {
                 }
             }
             Ok(Event::CData(e)) if depth > 0 => {
-                current.push_str(&String::from_utf8_lossy(e.as_ref()));
+                current.push_str(&e.xml_content(XmlVersion::Implicit1_0));
             }
             Ok(Event::Eof) | Err(_) => break,
             _ => {}

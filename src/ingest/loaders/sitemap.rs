@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::{Context, Result};
 use futures::stream::StreamExt;
+use quick_xml::XmlVersion;
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 use tracing::{info, warn};
@@ -24,32 +25,28 @@ fn parse_sitemap_urls(xml: &str) -> (bool, Vec<String>) {
         match reader.read_event() {
             Ok(Event::Start(e) | Event::Empty(e)) => {
                 let local = e.local_name();
-                if local.as_ref() == b"sitemapindex" {
+                if local.as_ref() == "sitemapindex" {
                     is_index = true;
                 }
-                if local.as_ref() == b"loc" {
+                if local.as_ref() == "loc" {
                     in_loc = true;
                 }
             }
             Ok(Event::Text(e)) if in_loc => {
-                if let Ok(text) = e.decode() {
-                    let url = text.trim().to_owned();
-                    if !url.is_empty() {
-                        urls.push(url);
-                    }
+                let url = e.xml_content(XmlVersion::Implicit1_0).trim().to_owned();
+                if !url.is_empty() {
+                    urls.push(url);
                 }
                 in_loc = false;
             }
             Ok(Event::CData(e)) if in_loc => {
-                if let Ok(text) = std::str::from_utf8(e.as_ref()) {
-                    let url = text.trim().to_owned();
-                    if !url.is_empty() {
-                        urls.push(url);
-                    }
+                let url = e.xml_content(XmlVersion::Implicit1_0).trim().to_owned();
+                if !url.is_empty() {
+                    urls.push(url);
                 }
                 in_loc = false;
             }
-            Ok(Event::End(e)) if e.local_name().as_ref() == b"loc" => {
+            Ok(Event::End(e)) if e.local_name().as_ref() == "loc" => {
                 in_loc = false;
             }
             Ok(Event::Eof) => break,
