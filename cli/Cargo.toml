@@ -68,6 +68,10 @@ workspace = true
 [[bin]]
 name = "lore"
 path = "src/main.rs"
+# The bin and the `lore` library crate both render to target/doc/lore/, which
+# races when rustdoc documents the workspace. The CLI surface is documented in
+# docs/, not rustdoc, so skip it.
+doc = false
 
 [lib]
 name = "lore_cli"
