@@ -5,6 +5,16 @@ all-features = true
 ignore = [
     # paste: unmaintained but widely used, transitive dep -- no alternative yet
     "RUSTSEC-2024-0436",
+    # unsafe-libyaml: unmaintained, pulled in by serde_yaml_ng (our mandated YAML
+    # crate). Revisit when switching to a safe-Rust YAML parser.
+    "RUSTSEC-2024-0449",
+    # zip 8: SUID bits / symlinks in ZipArchive::extract and ZipStreamReader::extract.
+    # lore never calls extract() -- archive.rs copies entry bytes into regular files
+    # and applies no Unix modes. zip 8 stays because calamine (via kreuzberg) needs
+    # it, and zip 9 breaks the kreuzberg-tesseract 4.10.4 build script (`zip >=7`).
+    "RUSTSEC-2026-0367",
+    "RUSTSEC-2026-0368",
+    "RUSTSEC-2026-0369",
 ]
 
 [licenses]
