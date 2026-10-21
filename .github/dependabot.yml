@@ -14,6 +14,9 @@ updates:
     ignore:
       - dependency-name: quick-xml
         versions: ["0.42.x"]
+      # zip 9 is held (see docs/contributing.md).
+      - dependency-name: zip
+        update-types: ["version-update:semver-major"]
 
   # fuzz/ declares its own [workspace], so it has a separate Cargo.lock that the
   # "/" entry above never touches and that `cargo deny check` (which reads the
@@ -29,6 +32,9 @@ updates:
     groups:
       all:
         patterns: ["*"]
+    ignore:
+      - dependency-name: zip
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: "/"

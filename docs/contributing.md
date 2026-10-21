@@ -158,15 +158,18 @@ here first when an update fails to compile:
 | Crate | Held at | Why |
 |-------|---------|-----|
 | `quick-xml` | 0.41 | 0.42 is a breaking API change (`Reader::decoder` removed, `local_name()` now yields `&str`) costing ~28 call-site fixes across the feed, sitemap and youtube loaders. It buys nothing: `kreuzberg` still depends on 0.41, so bumping only duplicates the crate in the tree, and `cargo deny` reports no advisory against 0.41. Revisit when kreuzberg moves. |
+| `zip` | 8 | `kreuzberg-tesseract` declares its build dependency as `zip >=7`, so once zip 9 is in the lockfile Cargo hands it to that build script, which does not compile against the 9.x API (`mangled_name()` now returns a `Result`). `calamine` (via kreuzberg) also still needs 8. The three zip 8 advisories (RUSTSEC-2026-0367/0368/0369) only affect `extract()`, which lore never calls, and are ignored in `deny.toml`. Revisit when kreuzberg-tesseract supports zip 9. |
 
-`quick-xml` is held by the manifest requirement itself, so `cargo update`
-cannot bump it past 0.41, and `.github/dependabot.yml` ignores `0.42.x` so the
-weekly group PR does not re-propose it. `make install` passes `--locked` so an
+`quick-xml` and `zip` are held by the manifest requirement itself, so
+`cargo update` cannot bump them past the held major, and
+`.github/dependabot.yml` ignores the next major so the weekly group PR does not
+re-propose it. For `zip`, also keep a plain `cargo update` from putting zip 9
+in the lockfile: follow it with `cargo update zip@9 --precise 8.6.0` (adjust
+the versions) if it does. `make install` passes `--locked` so an
 install reproduces the audited tree rather than re-resolving it.
 
-Two dependencies show a newer major on crates.io that is a pre-release, not a
-stable bump: `notify` (9.0.0-rc) and `zip` (9.0.0-pre). Both stay on their
-current stable majors.
+`notify` shows a newer major on crates.io that is a pre-release (9.0.0-rc),
+not a stable bump. It stays on its current stable major.
 
 You can also run the underlying cargo commands directly:
 
