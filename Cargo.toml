@@ -78,7 +78,7 @@ blake3 = "1"
 ignore = { version = "0.4", optional = true }
 globset = { version = "0.4", optional = true }
 schemars = "1.0"
-tantivy = { version = "0.26", features = ["zstd-compression"] }
+tantivy = { version = "0.27", features = ["zstd-compression"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 reqwest = { version = "0.13", features = ["json", "gzip", "brotli", "stream"], optional = true }
@@ -102,7 +102,7 @@ kreuzberg = { version = "4.9", default-features = false, optional = true, featur
     # Auto-detect document language
     "language-detection",
 ] }
-zip = { version = "8", default-features = false, features = ["deflate"], optional = true }
+zip = { version = "9", default-features = false, features = ["deflate"], optional = true }
 tar = { version = "0.4", optional = true }
 flate2 = { version = "1", optional = true }
 zstd = { version = "0.14", optional = true }
