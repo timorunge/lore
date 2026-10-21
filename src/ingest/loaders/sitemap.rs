@@ -216,6 +216,6 @@ mod tests {
 
         // Error recovery: non-XML garbage should produce empty output, not panic.
         let (_, urls) = parse_sitemap_urls("not valid xml at all <><>");
-        assert!(urls.is_empty());
+        assert_eq!(urls, Vec::<String>::new());
     }
 }

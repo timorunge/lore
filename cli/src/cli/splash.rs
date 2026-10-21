@@ -589,7 +589,7 @@ mod tests {
     #[test]
     fn bezier_produces_points() {
         let pts = bezier_curve((0, 10), (5, 5), (10, 10));
-        assert!(!pts.is_empty());
+        assert_ne!(pts, Vec::new());
         assert_eq!(*pts.first().unwrap(), (0, 10));
     }
 

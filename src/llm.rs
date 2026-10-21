@@ -674,7 +674,7 @@ mod tests {
     #[test]
     fn validate_anthropic_key_present() {
         let warnings = LlmClient::validate_credentials(Some(LlmProvider::Anthropic), true, false);
-        assert!(warnings.is_empty());
+        assert_eq!(warnings, Vec::<String>::new());
     }
 
     #[test]
@@ -687,20 +687,22 @@ mod tests {
     #[test]
     fn validate_openai_key_present() {
         let warnings = LlmClient::validate_credentials(Some(LlmProvider::Openai), false, true);
-        assert!(warnings.is_empty());
+        assert_eq!(warnings, Vec::<String>::new());
     }
 
     #[test]
     fn validate_ollama_no_warning() {
-        assert!(
-            LlmClient::validate_credentials(Some(LlmProvider::Ollama), false, false).is_empty()
+        assert_eq!(
+            LlmClient::validate_credentials(Some(LlmProvider::Ollama), false, false),
+            Vec::<String>::new()
         );
     }
 
     #[test]
     fn validate_bedrock_no_warning() {
-        assert!(
-            LlmClient::validate_credentials(Some(LlmProvider::Bedrock), false, false).is_empty()
+        assert_eq!(
+            LlmClient::validate_credentials(Some(LlmProvider::Bedrock), false, false),
+            Vec::<String>::new()
         );
     }
 
@@ -713,6 +715,9 @@ mod tests {
 
     #[test]
     fn validate_default_provider_silent_with_key() {
-        assert!(LlmClient::validate_credentials(None, true, false).is_empty());
+        assert_eq!(
+            LlmClient::validate_credentials(None, true, false),
+            Vec::<String>::new()
+        );
     }
 }

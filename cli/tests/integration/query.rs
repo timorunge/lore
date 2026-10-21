@@ -51,7 +51,7 @@ fn search_with_topic_filter() {
     let out = assert.get_output().stdout.clone();
     let json: serde_json::Value = serde_json::from_slice(&out).unwrap();
     let results = json["items"].as_array().unwrap();
-    assert!(!results.is_empty());
+    assert_ne!(*results, Vec::<serde_json::Value>::new());
     for r in results {
         assert_eq!(r["topic"].as_str().unwrap(), "Documentation");
     }
@@ -190,7 +190,7 @@ fn topics_json_format() {
             .arg("--json"),
     );
     let topics = json["items"].as_array().expect("items array");
-    assert!(!topics.is_empty());
+    assert_ne!(*topics, Vec::<serde_json::Value>::new());
     assert_eq!(
         topics[0]["name"].as_str(),
         Some("Documentation"),

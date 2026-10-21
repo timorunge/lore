@@ -1158,7 +1158,7 @@ mod tests {
     #[test]
     fn bezier_curve_basic() {
         let pts = bezier_curve((0, 10), (5, 5), (10, 10));
-        assert!(!pts.is_empty());
+        assert_ne!(pts, Vec::new());
         assert_eq!(*pts.first().expect("non-empty"), (0, 10));
         let &(lx, ly) = pts.last().expect("non-empty");
         assert!((lx - 10).abs() <= 1 && (ly - 10).abs() <= 1);

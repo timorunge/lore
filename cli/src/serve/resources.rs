@@ -184,7 +184,7 @@ mod tests {
         let info = stores.store_info();
         let result = read_resource(&stores, &info, INFO_URI);
         let result = result.unwrap();
-        assert!(!result.contents.is_empty());
+        assert_ne!(result.contents, Vec::new());
 
         let (store, _dir) = temp_store();
         let stores = StoreSet::single(store);
@@ -232,6 +232,6 @@ mod tests {
         assert!(last.next_cursor.is_none());
 
         let past = page_resources(&all, 500);
-        assert!(past.resources.is_empty());
+        assert_eq!(past.resources, Vec::new());
     }
 }

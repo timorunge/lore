@@ -115,6 +115,6 @@ mod tests {
 
         // non-XML garbage -> empty (error recovery)
         let urls = parse_feed_urls("this is not xml");
-        assert!(urls.is_empty());
+        assert_eq!(urls, Vec::<String>::new());
     }
 }

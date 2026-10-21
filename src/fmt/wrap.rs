@@ -302,7 +302,7 @@ mod tests {
 
         let mut out = String::new();
         write_wrapped(&mut out, &cjk, "  ", usize::MAX);
-        assert!(!out.is_empty());
+        assert_ne!(out, "");
 
         // U+00A0 NON-BREAKING SPACE is a 2-byte whitespace character.
         // Place it at a wrap boundary so rfind(char::is_whitespace) picks it up.
