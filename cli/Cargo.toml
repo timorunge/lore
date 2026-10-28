@@ -6,7 +6,6 @@ rust-version = "1.93"
 license = "MIT"
 description = "CLI and terminal interface for lore: ingest, search, and serve knowledge bases"
 repository = "https://github.com/timorunge/lore"
-homepage = "https://github.com/timorunge/lore"
 keywords = ["knowledge-base", "search", "cli", "mcp"]
 categories = ["command-line-utilities"]
 publish = false

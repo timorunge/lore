@@ -17,6 +17,9 @@ updates:
       # zip 9 is held (see docs/contributing.md).
       - dependency-name: zip
         update-types: ["version-update:semver-major"]
+      # mail-parser 1.x is held (see docs/contributing.md).
+      - dependency-name: mail-parser
+        versions: [">=1.0.0"]
 
   # fuzz/ declares its own [workspace], so it has a separate Cargo.lock that the
   # "/" entry above never touches and that `cargo deny check` (which reads the
@@ -35,6 +38,8 @@ updates:
     ignore:
       - dependency-name: zip
         update-types: ["version-update:semver-major"]
+      - dependency-name: mail-parser
+        versions: [">=1.0.0"]
 
   - package-ecosystem: github-actions
     directory: "/"

@@ -159,9 +159,10 @@ here first when an update fails to compile:
 |-------|---------|-----|
 | `quick-xml` | 0.41 | 0.42 is a breaking API change (`Reader::decoder` removed, `local_name()` now yields `&str`) costing ~28 call-site fixes across the feed, sitemap and youtube loaders. It buys nothing: `kreuzberg` still depends on 0.41, so bumping only duplicates the crate in the tree, and `cargo deny` reports no advisory against 0.41. Revisit when kreuzberg moves. |
 | `zip` | 8 | `kreuzberg-tesseract` declares its build dependency as `zip >=7`, so once zip 9 is in the lockfile Cargo hands it to that build script, which does not compile against the 9.x API (`mangled_name()` now returns a `Result`). `calamine` (via kreuzberg) also still needs 8. The three zip 8 advisories (RUSTSEC-2026-0367/0368/0369) only affect `extract()`, which lore never calls, and are ignored in `deny.toml`. Revisit when kreuzberg-tesseract supports zip 9. |
+| `mail-parser` | 0.11 | 1.0 requires rustc 1.98, above the 1.93 MSRV, and changes the address and date APIs the maildir loader uses (`Address::into_list` removed, new accessor signatures). Revisit when the MSRV reaches 1.98. |
 
-`quick-xml` and `zip` are held by the manifest requirement itself, so
-`cargo update` cannot bump them past the held major, and
+`quick-xml`, `zip`, and `mail-parser` are held by the manifest requirement
+itself, so `cargo update` cannot bump them past the held major, and
 `.github/dependabot.yml` ignores the next major so the weekly group PR does not
 re-propose it. For `zip`, also keep a plain `cargo update` from putting zip 9
 in the lockfile: follow it with `cargo update zip@9 --precise 8.6.0` (adjust

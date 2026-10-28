@@ -28,7 +28,6 @@ rust-version = "1.93"
 license = "MIT"
 description = "Knowledge base library: ingest, index, and search documents"
 repository = "https://github.com/timorunge/lore"
-homepage = "https://github.com/timorunge/lore"
 keywords = ["knowledge-base", "search", "bm25", "mcp", "tantivy"]
 categories = ["text-processing", "database"]
 publish = false
@@ -122,6 +121,13 @@ libc = "0.2"
 [profile.release]
 lto = "thin"
 strip = true
+
+# cmake-rs builds the Debug configuration at opt-level 0, where
+# kreuzberg-tesseract's build script compiles leptonica/tesseract with /MDd.
+# Rust always links the release CRT, so MSVC warned LNK4098 (MSVCRTD conflicts)
+# on every Windows debug/test link. opt-level 1 selects RelWithDebInfo (/MD).
+[profile.dev.package.kreuzberg-tesseract]
+opt-level = 1
 
 [profile.dist]
 inherits = "release"
