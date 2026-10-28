@@ -1,5 +1,6 @@
 use unicode_width::UnicodeWidthChar;
 
+use crate::fmt::width::{display_width, prefix_within_width};
 use crate::util::truncate_chars;
 
 /// Post-process output to fit within terminal width.
@@ -17,81 +18,79 @@ pub fn cap_output(text: &str, width: usize) -> String {
     out
 }
 
-#[derive(Clone, Copy, PartialEq)]
-enum EscState {
-    Normal,
-    Esc,
-    Csi,
+/// Byte length of the ANSI escape sequence starting at `s[0]`, if any.
+/// Handles CSI (`ESC [ ... final`) and two-byte `ESC x` sequences.
+fn escape_len(s: &str) -> Option<usize> {
+    let mut chars = s.char_indices();
+    if !matches!(chars.next(), Some((_, '\x1b'))) {
+        return None;
+    }
+    match chars.next() {
+        Some((_, '[')) => Some(
+            chars
+                .find(|(_, c)| ('\x40'..='\x7e').contains(c))
+                .map_or(s.len(), |(i, c)| i + c.len_utf8()),
+        ),
+        Some((i, c)) => Some(i + c.len_utf8()),
+        None => Some(1),
+    }
+}
+
+/// Split `s` into alternating plain-text and escape segments, in order.
+/// Each item is `(byte_offset, segment, is_escape)`.
+fn segments(s: &str) -> Vec<(usize, &str, bool)> {
+    let mut out = Vec::new();
+    let mut plain_start = 0;
+    let mut i = 0;
+    while i < s.len() {
+        if let Some(n) = escape_len(&s[i..]) {
+            if plain_start < i {
+                out.push((plain_start, &s[plain_start..i], false));
+            }
+            out.push((i, &s[i..i + n], true));
+            i += n;
+            plain_start = i;
+        } else {
+            i += s[i..].chars().next().map_or(1, char::len_utf8);
+        }
+    }
+    if plain_start < s.len() {
+        out.push((plain_start, &s[plain_start..], false));
+    }
+    out
 }
 
 /// Visible display width excluding ANSI escape sequences.
 ///
-/// Returns the number of terminal columns the string occupies.
-/// CJK double-width characters count as 2, control characters as 0.
+/// Returns the number of terminal columns the string occupies, measured per
+/// grapheme cluster: CJK and emoji count as 2, combining marks and joiners
+/// as 0, so a ZWJ emoji sequence or a flag is one 2-column glyph.
 pub fn visible_width(s: &str) -> usize {
-    let mut w = 0usize;
-    let mut state = EscState::Normal;
-    for c in s.chars() {
-        match state {
-            EscState::Normal => {
-                if c == '\x1b' {
-                    state = EscState::Esc;
-                } else {
-                    w += c.width().unwrap_or(0);
-                }
-            }
-            EscState::Esc => {
-                state = if c == '[' {
-                    EscState::Csi
-                } else {
-                    EscState::Normal
-                };
-            }
-            EscState::Csi => {
-                if ('\x40'..='\x7e').contains(&c) {
-                    state = EscState::Normal;
-                }
-            }
-        }
-    }
-    w
+    segments(s)
+        .into_iter()
+        .filter(|(_, _, esc)| !esc)
+        .map(|(_, seg, _)| display_width(seg))
+        .sum()
 }
 
 /// Byte offset of the longest prefix whose visible width fits within `target`
-/// columns. Always returns a char boundary.
+/// columns. Always returns a grapheme boundary.
 ///
-/// A double-width character that would push the total past `target` is excluded
-/// from the prefix. Returns 0 when the first visible character alone exceeds
+/// A double-width cluster that would push the total past `target` is excluded
+/// from the prefix. Returns 0 when the first visible cluster alone exceeds
 /// `target` (callers must advance by at least one char to avoid infinite loops).
 fn byte_at_visible(s: &str, target: usize) -> usize {
     let mut vis = 0usize;
-    let mut state = EscState::Normal;
-    for (i, c) in s.char_indices() {
-        match state {
-            EscState::Normal => {
-                if c == '\x1b' {
-                    state = EscState::Esc;
-                } else {
-                    let w = c.width().unwrap_or(0);
-                    if vis + w > target {
-                        return i;
-                    }
-                    vis += w;
-                }
-            }
-            EscState::Esc => {
-                state = if c == '[' {
-                    EscState::Csi
-                } else {
-                    EscState::Normal
-                };
-            }
-            EscState::Csi => {
-                if ('\x40'..='\x7e').contains(&c) {
-                    state = EscState::Normal;
-                }
-            }
+    for (offset, seg, esc) in segments(s) {
+        if esc {
+            continue;
         }
+        let w = display_width(seg);
+        if vis + w <= target {
+            vis += w;
+            continue;
+        }
+        return offset + prefix_within_width(seg, target - vis).len();
     }
     s.len()
 }
@@ -181,10 +180,20 @@ fn wrap_line(out: &mut String, line: &str, indent: &str, max: usize) {
 }
 
 /// Truncate a string at a word boundary for display.
+///
+/// Text without word spaces (CJK) is cut at the column limit instead of
+/// backing off to the last whitespace, which could drop nearly all of it.
 pub(crate) fn truncate_body(s: &str, max: usize) -> &str {
     let truncated = truncate_chars(s, max);
     if truncated.len() == s.len() {
         return s;
+    }
+    let cut_mid_word = s[truncated.len()..]
+        .chars()
+        .next()
+        .is_some_and(|c| c.is_alphanumeric() && c.width().unwrap_or(0) < 2);
+    if !cut_mid_word {
+        return truncated;
     }
     truncated
         .rfind(char::is_whitespace)
@@ -363,6 +372,14 @@ mod tests {
         let s = "a驱b"; // widths: a=1, 驱=2, b=1 -> total 4
         assert_eq!(byte_at_visible(s, 1), 1); // after 'a' (1 col)
         assert_eq!(byte_at_visible(s, 3), 4); // after '驱' (3 cols, byte offset past 3-byte char)
+
+        // Grapheme clusters: one glyph each, never split.
+        let family = "\u{1f468}\u{200d}\u{1f469}\u{200d}\u{1f467}";
+        assert_eq!(visible_width(family), 2);
+        assert_eq!(visible_width("\x1b[1m🇯🇵\x1b[0m e\u{301}"), 4);
+        let s = format!("a{family}b");
+        assert_eq!(byte_at_visible(&s, 2), 1);
+        assert_eq!(byte_at_visible(&s, 3), 1 + family.len());
 
         // ANSI CSI sequences have zero visible width.
         assert_eq!(visible_width("\x1b[2K"), 0);

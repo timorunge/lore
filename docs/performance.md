@@ -65,7 +65,10 @@ though the optimizer always produces a single segment in the end.
 ### The `en_stem` tokenizer
 
 All searchable text fields (body, title, section, tags) use a tokenizer chain:
-SimpleTokenizer -> RemoveLongFilter -> LowerCaser -> StopWordFilter -> Stemmer.
+LoreTokenizer -> RemoveLongFilter -> LowerCaser -> StopWordFilter -> Stemmer.
+`LoreTokenizer` splits words like tantivy's `SimpleTokenizer`, indexes
+Chinese and Japanese runs as overlapping character bigrams, and keeps
+emoji as tokens.
 English stemming is the most expensive step. The cost scales with total text
 volume across all chunks -- more chunks or larger chunks means more tokenization
 work. This is the CPU-bound floor that cannot be reduced without changing the

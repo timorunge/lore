@@ -1,5 +1,8 @@
 use std::fmt::Write;
 
+use unicode_segmentation::UnicodeSegmentation;
+
+use crate::fmt::width::{display_width, pad_left, pad_right, prefix_within_width};
 use crate::util::{truncate_chars, truncate_left_chars};
 
 /// A table cell with plain text and an optional ANSI style code.
@@ -82,7 +85,7 @@ pub(crate) fn format_table(
     let natural_widths: Vec<usize> = (0..ncols)
         .map(|i| {
             rows.iter()
-                .map(|r| r.get(i).map_or(0, |c| c.text.chars().count()))
+                .map(|r| r.get(i).map_or(0, |c| display_width(&c.text)))
                 .max()
                 .unwrap_or(0)
         })
@@ -187,8 +190,7 @@ pub(crate) fn format_table(
                 let text = cell.map_or("", |c| c.text.as_str());
                 let style = cell.map_or("", |c| c.style);
                 let w = col_widths[i];
-                // chars().count() guards against splitting at a non-char boundary.
-                let lines = if text.chars().count() <= w {
+                let lines = if display_width(text) <= w {
                     vec![text.to_owned()]
                 } else {
                     match col.truncate {
@@ -215,12 +217,12 @@ pub(crate) fn format_table(
                     text.to_owned()
                 } else {
                     match col.align {
-                        Align::Left => format!("{text:<w$}"),
+                        Align::Left => pad_right(text, w),
                         Align::Right => {
                             if line_idx > 0 {
-                                format!("{text:<w$}")
+                                pad_right(text, w)
                             } else {
-                                format!("{text:>w$}")
+                                pad_left(text, w)
                             }
                         }
                     }
@@ -251,15 +253,18 @@ fn wrap_cell(text: &str, width: usize) -> Vec<String> {
     let mut pos = 0;
     while pos < text.len() {
         let remaining = &text[pos..];
-        if remaining.chars().count() <= width {
+        if display_width(remaining) <= width {
             lines.push(remaining.to_owned());
             break;
         }
-        // Find a char-boundary at `width` chars.
-        let mut end = remaining
-            .char_indices()
-            .nth(width)
-            .map_or(remaining.len(), |(i, _)| i);
+        let mut end = prefix_within_width(remaining, width).len();
+        if end == 0 {
+            // A single cluster wider than the column: emit it to make progress.
+            end = remaining
+                .graphemes(true)
+                .next()
+                .map_or(remaining.len(), str::len);
+        }
         let chunk = &remaining[..end];
         // Prefer breaking after ", " or at a space.
         let break_at = chunk
@@ -295,7 +300,11 @@ pub(crate) fn format_kv(pairs: &[(&str, &str)], indent: &str, width: usize) -> S
     if pairs.is_empty() {
         return String::new();
     }
-    let lw = pairs.iter().map(|(l, _)| l.len() + 1).max().unwrap_or(0);
+    let lw = pairs
+        .iter()
+        .map(|(l, _)| display_width(l) + 1)
+        .max()
+        .unwrap_or(0);
     let columns = [
         Column {
             align: Align::Left,

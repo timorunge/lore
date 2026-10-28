@@ -113,8 +113,12 @@ lore search "architecture" --format pptx
 
 ## Multilingual research
 
-The `store.language` setting selects the stemming language. For a
-monolingual corpus, set it directly:
+The `store.language` setting selects the stemming language. Chinese,
+Japanese, and Korean text is searchable under every language setting:
+Chinese and Japanese are indexed as character bigrams, so multi-character
+queries match without word segmentation. Korean, which separates
+words with spaces, is indexed by word. For a monolingual corpus, set the
+stemming language directly:
 
 ```yaml
 store:

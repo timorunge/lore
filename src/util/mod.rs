@@ -49,36 +49,25 @@ pub fn truncate_str_ref(s: &str, max: usize) -> &str {
     &s[..boundary]
 }
 
-/// Truncate to at most `max` characters (Unicode scalar values).
+/// Truncate to at most `max` display columns, cut on a grapheme boundary.
 pub fn truncate_chars(s: &str, max: usize) -> &str {
-    match s.char_indices().nth(max) {
-        Some((idx, _)) => &s[..idx],
-        None => s,
-    }
+    crate::fmt::width::prefix_within_width(s, max)
 }
 
-/// Left-truncate to at most `max` characters, showing tail with `".."` prefix.
-/// When `max <= 1`, the `..` prefix is omitted.
+/// Left-truncate to at most `max` display columns, showing the tail with a
+/// `".."` prefix. When `max <= 1`, the `..` prefix is omitted.
 ///
 /// Returns `Cow::Borrowed` when no truncation is needed (zero allocation);
 /// `Cow::Owned` only when the string is actually shortened.
 pub fn truncate_left_chars(s: &str, max: usize) -> std::borrow::Cow<'_, str> {
-    let count = s.chars().count();
-    if count <= max {
+    use crate::fmt::width::{display_width, suffix_within_width};
+    if display_width(s) <= max {
         return std::borrow::Cow::Borrowed(s);
     }
-    if max == 0 {
-        return std::borrow::Cow::Owned(String::new());
+    if max <= 1 {
+        return std::borrow::Cow::Owned(suffix_within_width(s, max).to_owned());
     }
-    if max == 1 {
-        return std::borrow::Cow::Owned(
-            s.chars().last().map_or_else(String::new, |c| c.to_string()),
-        );
-    }
-    let tail_chars = max - 2;
-    let skip = count - tail_chars;
-    let start = s.char_indices().nth(skip).map_or(s.len(), |(i, _)| i);
-    std::borrow::Cow::Owned(format!("..{}", &s[start..]))
+    std::borrow::Cow::Owned(format!("..{}", suffix_within_width(s, max - 2)))
 }
 
 /// Slice a collection by offset and limit, clamping both to bounds.
@@ -171,6 +160,8 @@ mod tests {
             ("hello", 10, "hello"),
             ("", 0, ""),
             ("café", 3, "caf"),
+            ("日本語", 5, "日本"),
+            ("cafe\u{301}!", 4, "cafe\u{301}"),
         ];
         for (input, max, expected) in cases {
             assert_eq!(
@@ -189,6 +180,9 @@ mod tests {
             ("hello", 10, "hello"),
             ("", 0, ""),
             ("café", 3, "..é"),
+            ("日本語", 5, "..語"),
+            ("日本語", 4, "..語"),
+            ("🇯🇵🇩🇪", 3, ".."),
         ];
         for (input, max, expected) in cases {
             assert_eq!(

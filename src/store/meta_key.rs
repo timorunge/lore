@@ -18,6 +18,9 @@ pub(crate) const PHRASE_SEARCH: &str = "phrase_search";
 pub(crate) const WRITER_HEAP_MB: &str = "writer_heap_mb";
 /// Stemming/stop-word language used to build the tokenizer pipeline.
 pub(crate) const LANGUAGE: &str = "language";
+/// Revision of the tokenizer pipeline that wrote the index terms. Absent on
+/// stores written before the key existed, which are treated as revision 1.
+pub(crate) const ANALYZER_VERSION: &str = "analyzer_version";
 /// Fingerprint of the chunker-relevant processing config (max/min chunk chars).
 /// Used to warn when a store was built with different chunking parameters.
 #[cfg(feature = "ingest")]

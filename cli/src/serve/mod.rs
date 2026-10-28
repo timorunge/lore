@@ -282,6 +282,14 @@ pub(crate) fn format_store_overview(
         wln!(out, "Version: {}", format_version(v));
     }
 
+    if info.needs_rebuild {
+        wln!(
+            out,
+            "Warning: index built by an older tokenizer; some searches may miss \
+             matches. Run `lore ingest --recreate` to rebuild."
+        );
+    }
+
     if !info.topics.is_empty() {
         format_topics_section(&mut out, &info.topics, &topic_overflow);
     }

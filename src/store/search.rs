@@ -10,6 +10,7 @@ use tantivy::snippet::SnippetGenerator;
 
 use crate::error::LoreError;
 use crate::store::schema::{fields, get_f64_opt, get_i64, get_text, get_text_opt, sanitize_query};
+use crate::store::tokenizer::split_cjk_terms;
 use crate::store::types::{
     FieldHighlights, MAX_QUERY_BYTES, MAX_SEARCH_LIMIT, SearchHit, SearchQuery, SearchSort,
     SnippetData, sort_chunks_natural,
@@ -39,7 +40,7 @@ impl Store {
         }
         let Ok(text_query) = self
             .search_parser
-            .parse_query(&sanitize_query(truncated_query))
+            .parse_query(&split_cjk_terms(&sanitize_query(truncated_query)))
         else {
             return Err(LoreError::InvalidQuery);
         };

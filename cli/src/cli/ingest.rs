@@ -409,7 +409,7 @@ fn print_failed_docs(observer: &CliIngestObserver, prefix: &str, result: &Ingest
     let term_width = terminal::output_width();
     // "[! ] " = 5 chars, "  " indent = 2 chars, " " separator = 1 char
     // prefix contains ANSI codes so measure its display width via strip
-    let prefix_visible = strip_ansi(prefix).chars().count();
+    let prefix_visible = lore::fmt::visible_width(prefix);
     let overhead = prefix_visible + 2 + 1; // indent + separator
     let usable = term_width.saturating_sub(overhead);
     // Give source at most 60% of the space, reason gets the rest (at least 20 chars each).
@@ -441,23 +441,6 @@ fn print_failed_docs(observer: &CliIngestObserver, prefix: &str, result: &Ingest
     } else if let Some(ref path) = wrote_log {
         observer.println(format!("{prefix}     full log: {}", path.display()));
     }
-}
-
-fn strip_ansi(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    let mut in_escape = false;
-    for ch in s.chars() {
-        if in_escape {
-            if ch.is_ascii_alphabetic() {
-                in_escape = false;
-            }
-        } else if ch == '\x1b' {
-            in_escape = true;
-        } else {
-            out.push(ch);
-        }
-    }
-    out
 }
 
 /// Write all failures as JSONL to a dated file in the cache logs dir.

@@ -228,6 +228,16 @@ pub async fn ingest(
     )
     .context("failed to open store")?;
 
+    // An incremental ingest would mix old and new terms in one index, so
+    // refuse instead of silently degrading search.
+    if store_exists && mode != IngestMode::Recreate && store.needs_rebuild() {
+        anyhow::bail!(
+            "store at {} was indexed by an older tokenizer; \
+             run `lore ingest --recreate` to rebuild it",
+            store_path.display(),
+        );
+    }
+
     // Warn if the existing store was built with different chunking parameters
     // or a different lore version.
     if store_exists && mode != IngestMode::Recreate {
@@ -893,6 +903,10 @@ fn write_store_metadata(
         &config.store.writer_heap_mb.to_string(),
     );
     store.set_metadata(meta_key::LANGUAGE, config.store.language.as_str());
+    store.set_metadata(
+        meta_key::ANALYZER_VERSION,
+        &crate::store::schema::ANALYZER_VERSION.to_string(),
+    );
     store.set_metadata(meta_key::CHUNK_CONFIG, &chunk_config_fingerprint(config));
 
     if let Some(name) = &config.name {

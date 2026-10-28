@@ -7,8 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] -- 2026-10-28
+
+### Upgrading
+
+The index tokenizer changed (CJK bigrams, emoji tokens, and tantivy
+0.27's new stemmer), so terms in a 0.1.x store no longer match how
+queries are analyzed. Every store still opens, but `lore info` flags it
+and `lore ingest` refuses to update it incrementally. Rebuild once:
+
+```bash
+lore ingest --recreate
+```
+
 ### Added
 
+- **CJK search** -- Chinese and Japanese text is indexed as character
+  bigrams, so multi-character queries match; previously a whole sentence
+  was one unsearchable token
+- **Emoji search** -- emoji are indexed as tokens instead of dropped
 - **`exec` raw output mode** -- `output: raw` consumes a command's entire
   stdout as one document instead of parsing it as JSONL, with optional
   `source_key` and `format` fields
@@ -19,6 +36,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **Store provenance** -- `lore.meta` records a chunk-config fingerprint
   and the writing version, and warns when the store was built with
   different settings
+- **Analyzer versioning** -- `lore.meta` records an `analyzer_version`;
+  `lore info` reports `needs_rebuild` and `lore ingest` refuses an
+  incremental update when the stored terms no longer match the current
+  tokenizer
+
+### Changed
+
+- **Wide-character display** -- tables, truncation, and wrapping measure
+  terminal columns per grapheme cluster, so CJK, emoji (including ZWJ
+  sequences and flags), and combining marks align and are never split
+- **tantivy 0.27** -- updated from 0.26 in the library and fuzz workspace
+- **rmcp 3.1** and **quick-xml 0.42** -- ported to the new APIs
+- `zip` is held at 8 until kreuzberg-tesseract supports zip 9
 
 ### Fixed
 
@@ -42,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- Updated ctutils to 0.4.6, clearing RUSTSEC-2026-0385
 - Updated both workspace lockfiles, clearing RUSTSEC-2026-0258 (h2) at
   the root and seven advisories in the fuzz workspace, which had gone
   unaudited because it declares its own `[workspace]`
@@ -104,4 +135,6 @@ Initial release.
 - **Install script** (`scripts/install.sh`), cargo-binstall support,
   and pre-built binaries via cargo-dist
 
+[Unreleased]: https://github.com/timorunge/lore/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/timorunge/lore/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/timorunge/lore/releases/tag/v0.1.0

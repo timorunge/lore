@@ -73,7 +73,7 @@ impl LinePrefix {
     pub(crate) fn new(label: &str, width: usize, paint: style::Painter) -> Self {
         Self(Some(format!(
             "{} ",
-            paint.dim(&format!("[{label:width$}]"))
+            paint.dim(&format!("[{}]", lore::fmt::width::pad_right(label, width)))
         )))
     }
 
@@ -184,7 +184,11 @@ pub fn make_prefixes(configs: &[ResolvedConfig]) -> Vec<LinePrefix> {
         .iter()
         .map(|rc| config_label(rc.config.name.as_ref(), &rc.config_path))
         .collect();
-    let width = labels.iter().map(String::len).max().unwrap_or(0);
+    let width = labels
+        .iter()
+        .map(|l| lore::fmt::width::display_width(l))
+        .max()
+        .unwrap_or(0);
     labels
         .iter()
         .map(|l| LinePrefix::new(l, width, paint))

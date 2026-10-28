@@ -351,6 +351,7 @@ fn merge_store_infos(infos: Vec<StoreInfo>) -> StoreInfo {
     let mut chunks: u64 = 0;
     let mut words: u64 = 0;
     let mut segments: usize = 0;
+    let mut needs_rebuild = false;
     let mut topic_map: HashMap<String, TopicStat> = HashMap::new();
     let mut source_types: HashMap<SourceType, u64> = HashMap::new();
     let mut kinds: HashMap<DocKind, u64> = HashMap::new();
@@ -362,6 +363,7 @@ fn merge_store_infos(infos: Vec<StoreInfo>) -> StoreInfo {
         chunks = chunks.saturating_add(info.chunks);
         words = words.saturating_add(info.words);
         segments += info.segments;
+        needs_rebuild |= info.needs_rebuild;
 
         for stat in info.topics {
             merge_topic_stat(&mut topic_map, stat);
@@ -397,6 +399,7 @@ fn merge_store_infos(infos: Vec<StoreInfo>) -> StoreInfo {
         writer_heap_mb: None,
         lore_version: None,
         language: None,
+        needs_rebuild,
         segments,
     }
 }

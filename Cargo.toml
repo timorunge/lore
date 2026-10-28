@@ -22,7 +22,7 @@ implicit_hasher = "allow"
 
 [package]
 name = "lore"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.93"
 license = "MIT"
@@ -78,7 +78,7 @@ blake3 = "1"
 ignore = { version = "0.4", optional = true }
 globset = { version = "0.4", optional = true }
 schemars = "1.0"
-tantivy = { version = "0.26", features = ["zstd-compression"] }
+tantivy = { version = "0.27", features = ["zstd-compression"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 reqwest = { version = "0.13", features = ["json", "gzip", "brotli", "stream"], optional = true }
@@ -114,6 +114,7 @@ mime_guess = { version = "2", optional = true }
 tempfile = "3"
 bitcode = "0.6"
 unicode-width = "0.2"
+unicode-segmentation = "1"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -154,7 +155,7 @@ cmake = "*"
 cmake = "*"
 
 [dev-dependencies]
-lore = { path = ".", version = "0.1.0", features = ["test-support"] }
+lore = { path = ".", version = "0.2.0", features = ["test-support"] }
 wiremock = "0.6"
 proptest = "1"
 serial_test = "3"

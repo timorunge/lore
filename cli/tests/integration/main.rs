@@ -24,5 +24,7 @@ mod query;
 #[cfg(feature = "test-support")]
 mod sitemap;
 mod smoke;
+#[cfg(feature = "ingest")]
+mod unicode;
 #[cfg(feature = "test-support")]
 mod url;

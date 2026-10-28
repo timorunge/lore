@@ -507,33 +507,20 @@ fn truncate_label(label: &str, max_width: usize) -> String {
     // prefix + ellipsis + shortened_path + suffix
     let path_budget = max_width.saturating_sub(prefix_w + suffix_w + 1);
     if path_budget >= 3 {
-        let tail: String = path
-            .chars()
-            .rev()
-            .take(path_budget)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .collect();
+        let tail = lore::fmt::width::suffix_within_width(path, path_budget);
         return format!("{prefix}\u{2026}{tail}{suffix}");
     }
 
     // prefix + ellipsis + shortened_path (drop suffix)
     let path_budget = max_width.saturating_sub(prefix_w + 1);
     if path_budget >= 3 {
-        let tail: String = path
-            .chars()
-            .rev()
-            .take(path_budget)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .collect();
+        let tail = lore::fmt::width::suffix_within_width(path, path_budget);
         return format!("{prefix}\u{2026}{tail}");
     }
 
     // last resort: right-truncate the whole thing
-    let mut result: String = label.chars().take(max_width.saturating_sub(1)).collect();
+    let mut result =
+        lore::fmt::width::prefix_within_width(label, max_width.saturating_sub(1)).to_owned();
     result.truncate(result.trim_end().len());
     result.push('\u{2026}');
     result

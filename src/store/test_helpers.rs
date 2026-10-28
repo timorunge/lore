@@ -133,3 +133,13 @@ pub fn test_meta(source: &str, topic: &str) -> DocMeta {
         word_count: 100,
     }
 }
+
+/// Rewrite a store's `lore.meta` as if written before analyzer versioning.
+#[cfg(feature = "ingest")]
+#[allow(clippy::missing_panics_doc)]
+pub fn downgrade_analyzer_version(path: &std::path::Path) {
+    let store = store::Store::open_readonly(path).unwrap();
+    store.write_meta().remove(store::meta_key::ANALYZER_VERSION);
+    store.set_metadata(store::meta_key::LANGUAGE, "dutch");
+    store.commit().unwrap();
+}

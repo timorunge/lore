@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::store::Store;
 use crate::store::meta_key;
+use crate::store::schema::{LEGACY_ANALYZER_VERSION, analyzer_changed};
 use crate::store::types::{
     StoreInfo, TopicStat, accumulate_topic, avg_words_per_chunk, topic_agg_to_stats,
 };
@@ -88,7 +89,57 @@ impl Store {
             writer_heap_mb: meta.get(meta_key::WRITER_HEAP_MB).cloned(),
             lore_version: meta.get(meta_key::LORE_VERSION).cloned(),
             language: meta.get(meta_key::LANGUAGE).cloned(),
+            needs_rebuild: needs_rebuild(&meta),
             segments: self.segment_count(),
+        }
+    }
+
+    /// Whether the index was built by an older tokenizer revision whose
+    /// terms differ from the current one for this store's language.
+    #[cfg(feature = "ingest")]
+    pub(crate) fn needs_rebuild(&self) -> bool {
+        needs_rebuild(&self.read_meta())
+    }
+}
+
+/// Decide from `lore.meta` whether the index terms are stale. A store that
+/// was never ingested has no `language` key and nothing to rebuild.
+fn needs_rebuild(meta: &HashMap<String, String>) -> bool {
+    if !meta.contains_key(meta_key::LANGUAGE) {
+        return false;
+    }
+    let stored = meta
+        .get(meta_key::ANALYZER_VERSION)
+        .and_then(|v| v.parse::<u32>().ok())
+        .unwrap_or(LEGACY_ANALYZER_VERSION);
+    analyzer_changed(stored)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn meta(pairs: &[(&str, &str)]) -> HashMap<String, String> {
+        pairs
+            .iter()
+            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
+            .collect()
+    }
+
+    #[test]
+    fn needs_rebuild_table() {
+        let cases: &[(&[(&str, &str)], bool)] = &[
+            (&[], false),
+            (&[("language", "dutch")], true),
+            (&[("language", "english")], true),
+            (&[("language", "spanish")], true),
+            (&[("language", "none")], true),
+            (&[("language", "dutch"), ("analyzer_version", "1")], true),
+            (&[("language", "dutch"), ("analyzer_version", "2")], false),
+            (&[("language", "dutch"), ("analyzer_version", "junk")], true),
+        ];
+        for (pairs, expected) in cases {
+            assert_eq!(needs_rebuild(&meta(pairs)), *expected, "{pairs:?}");
         }
     }
 }

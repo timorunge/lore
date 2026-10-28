@@ -3,6 +3,7 @@
 mod format;
 pub mod style;
 pub(crate) mod table;
+pub mod width;
 pub(crate) mod wrap;
 
 pub use format::{

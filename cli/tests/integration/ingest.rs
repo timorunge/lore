@@ -50,3 +50,50 @@ fn ingest_dry_run() {
         "dry run should index 0 chunks"
     );
 }
+
+#[test]
+fn ingest_refuses_store_from_older_analyzer() {
+    let dir = TempDir::new().unwrap();
+    let docs = dir.path().join("docs");
+    fs::create_dir_all(&docs).unwrap();
+    fs::write(
+        docs.join("a.md"),
+        "# Vergaderingen\n\nWij vergaderen vaak.\n",
+    )
+    .unwrap();
+    let config = format!(
+        "name: Legacy\nsources:\n  - path: {}\n    glob: \"**/*.md\"\nstore:\n  path: idx\n  language: dutch\n",
+        docs.display()
+    );
+    let config_path = run_ingest(dir.path(), &config);
+
+    lore::store::test_helpers::downgrade_analyzer_version(&dir.path().join("idx"));
+
+    let json = collect_json(
+        lore()
+            .args(["info", "--config"])
+            .arg(&config_path)
+            .arg("--json"),
+    );
+    assert_eq!(json["needs_rebuild"], serde_json::Value::Bool(true));
+
+    lore()
+        .args(["ingest", "--config"])
+        .arg(&config_path)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--recreate"));
+
+    lore()
+        .args(["ingest", "--recreate", "--config"])
+        .arg(&config_path)
+        .assert()
+        .success();
+    let json = collect_json(
+        lore()
+            .args(["info", "--config"])
+            .arg(&config_path)
+            .arg("--json"),
+    );
+    assert!(json.get("needs_rebuild").is_none());
+}

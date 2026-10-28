@@ -10,6 +10,7 @@ pub use schema::{SEARCH_FIELDS, SearchFieldDef};
 mod search;
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_helpers;
+mod tokenizer;
 mod topics;
 pub(crate) mod types;
 mod writer;

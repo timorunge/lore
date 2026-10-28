@@ -68,10 +68,19 @@ use tantivy::schema::{
 };
 use tantivy::{Index, TantivyDocument};
 
+use crate::store::tokenizer::LoreTokenizer;
 use crate::types::IndexLanguage;
 
 /// Tokenizer name registered on the index -- referenced in `build_schema()`.
 pub(super) const TOKENIZER_NAME: &str = "lore_stem";
+
+/// Current revision of the tokenizer pipeline. Bump whenever the terms
+/// produced for any language change (filters, stemmer, upstream stemmer
+/// swap).
+pub(crate) const ANALYZER_VERSION: u32 = 2;
+
+/// Revision assumed for stores that predate the `analyzer_version` key.
+pub(crate) const LEGACY_ANALYZER_VERSION: u32 = 1;
 
 /// Resolved Tantivy field handles for the lore schema.
 pub(super) struct Fields {
@@ -254,15 +263,13 @@ pub(crate) fn get_f64_opt(doc: &TantivyDocument, field: Field) -> Option<f64> {
 /// tokenizer kind) alters how terms are stored on disk. Existing stores
 /// must be rebuilt with `lore ingest --recreate` after any change.
 pub(super) fn register_tokenizer(index: &Index, language: IndexLanguage) {
-    use tantivy::tokenizer::{
-        LowerCaser, RemoveLongFilter, SimpleTokenizer, Stemmer, StopWordFilter, TextAnalyzer,
-    };
+    use tantivy::tokenizer::{LowerCaser, RemoveLongFilter, Stemmer, StopWordFilter, TextAnalyzer};
 
     let Some(lang) = language.to_tantivy() else {
         // IndexLanguage::None -- whitespace + lowercase only.
         index.tokenizers().register(
             TOKENIZER_NAME,
-            TextAnalyzer::builder(SimpleTokenizer::default())
+            TextAnalyzer::builder(LoreTokenizer::default())
                 .filter(RemoveLongFilter::limit(100))
                 .filter(LowerCaser)
                 .build(),
@@ -271,14 +278,14 @@ pub(super) fn register_tokenizer(index: &Index, language: IndexLanguage) {
     };
 
     let analyzer = if let Some(sw) = StopWordFilter::new(lang) {
-        TextAnalyzer::builder(SimpleTokenizer::default())
+        TextAnalyzer::builder(LoreTokenizer::default())
             .filter(RemoveLongFilter::limit(100))
             .filter(LowerCaser)
             .filter(sw)
             .filter(Stemmer::new(lang))
             .build()
     } else {
-        TextAnalyzer::builder(SimpleTokenizer::default())
+        TextAnalyzer::builder(LoreTokenizer::default())
             .filter(RemoveLongFilter::limit(100))
             .filter(LowerCaser)
             .filter(Stemmer::new(lang))
@@ -330,6 +337,16 @@ pub(super) fn build_schema(phrase_search: bool) -> Schema {
     builder.add_f64_field(fields::LLM_QUALITY_SCORE, STORED);
 
     builder.build()
+}
+
+/// Whether terms indexed under analyzer revision `stored` differ from what
+/// the current revision produces.
+///
+/// Revision 2 changes every language: CJK text is indexed as bigrams and
+/// emoji as tokens (both were dropped or unsearchable before), and tantivy
+/// 0.27 swapped its stemmer.
+pub(crate) fn analyzer_changed(stored: u32) -> bool {
+    stored < ANALYZER_VERSION
 }
 
 #[cfg(test)]

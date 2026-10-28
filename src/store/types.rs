@@ -320,6 +320,10 @@ pub struct StoreInfo {
     pub lore_version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
+    /// True when the index was built by an older tokenizer revision and
+    /// search results may miss matches until `lore ingest --recreate`.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub needs_rebuild: bool,
     pub segments: usize,
 }
 
