@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Windows debug and test builds no longer warn `LNK4098: defaultlib
+  'MSVCRTD' conflicts`: the bundled tesseract/leptonica build now uses the
+  release C runtime, matching Rust
+
+### Changed
+
+- Updated notify to 8.2.1
+- `mail-parser` is held at 0.11: 1.0 requires rustc 1.98, above the MSRV
+
 ## [0.2.0] -- 2026-10-28
 
 ### Upgrading
