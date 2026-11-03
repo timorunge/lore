@@ -15,6 +15,9 @@ ignore = [
     "RUSTSEC-2026-0367",
     "RUSTSEC-2026-0368",
     "RUSTSEC-2026-0369",
+    # zip 8: symlink entry with large declared size aborts ZipArchive::extract.
+    # Same rationale as above -- lore never calls extract().
+    "RUSTSEC-2026-0429",
 ]
 
 [licenses]
