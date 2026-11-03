@@ -1,0 +1,35 @@
+name: Advisories
+
+# New RustSec advisories land without any code change. Scan main weekly so
+# they surface here instead of as a surprise failure on the next dependabot PR.
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  advisories:
+    name: Cargo deny advisories (${{ matrix.manifest }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        # fuzz/ has its own [workspace] and Cargo.lock, so audit it separately.
+        manifest: [Cargo.toml, fuzz/Cargo.toml]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: ${{ matrix.manifest }}
+          command: check
+          command-arguments: advisories

@@ -3,10 +3,12 @@ all-features = true
 
 [advisories]
 ignore = [
-    # paste: unmaintained but widely used, transitive dep -- no alternative yet
+    # paste: unmaintained but widely used, transitive dep -- no alternative yet.
+    # Remove once no dependency in the tree pulls in paste.
     "RUSTSEC-2024-0436",
     # unsafe-libyaml: unmaintained, pulled in by serde_yaml_ng (our mandated YAML
-    # crate). Revisit when switching to a safe-Rust YAML parser.
+    # crate). Remove when serde_yaml_ng drops unsafe-libyaml or we switch to a
+    # safe-Rust YAML parser.
     "RUSTSEC-2024-0449",
     # zip 8: SUID bits / symlinks in ZipArchive::extract and ZipStreamReader::extract.
     # lore never calls extract() -- archive.rs copies entry bytes into regular files
@@ -17,6 +19,7 @@ ignore = [
     "RUSTSEC-2026-0369",
     # zip 8: symlink entry with large declared size aborts ZipArchive::extract.
     # Same rationale as above -- lore never calls extract().
+    # Remove all zip ignores once calamine/kreuzberg allow zip >=9 (the fixed line).
     "RUSTSEC-2026-0429",
     # calamine 0.36: panic / unbounded allocation in the CFB parser (.xls/.xlsb).
     # Pinned by kreuzberg 4.10.4 (latest), fix needs calamine 0.38. Panics are
