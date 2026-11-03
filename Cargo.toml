@@ -24,7 +24,7 @@ implicit_hasher = "allow"
 name = "lore"
 version = "0.2.0"
 edition = "2024"
-rust-version = "1.93"
+rust-version = "1.94.1"
 license = "MIT"
 description = "Knowledge base library: ingest, index, and search documents"
 repository = "https://github.com/timorunge/lore"
@@ -164,7 +164,7 @@ cmake = "*"
 lore = { path = ".", version = "0.2.0", features = ["test-support"] }
 wiremock = "0.6"
 proptest = "1"
-serial_test = "3"
+serial_test = "4"
 criterion = { version = "0.8", features = ["html_reports"] }
 
 [[bench]]
