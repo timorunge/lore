@@ -18,6 +18,11 @@ ignore = [
     # zip 8: symlink entry with large declared size aborts ZipArchive::extract.
     # Same rationale as above -- lore never calls extract().
     "RUSTSEC-2026-0429",
+    # calamine 0.36: panic / unbounded allocation in the CFB parser (.xls/.xlsb).
+    # Pinned by kreuzberg 4.10.4 (latest), fix needs calamine 0.38. Panics are
+    # isolated via tokio::spawn (CONV-ISOLATE), OOM is bounded by
+    # LORE_MAX_FILE_MB. Remove once kreuzberg moves to calamine >=0.38.
+    "RUSTSEC-2026-0436",
 ]
 
 [licenses]
