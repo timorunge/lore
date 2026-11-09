@@ -26,6 +26,10 @@ ignore = [
     # isolated via tokio::spawn (CONV-ISOLATE), OOM is bounded by
     # LORE_MAX_FILE_MB. Remove once kreuzberg moves to calamine >=0.38.
     "RUSTSEC-2026-0436",
+    # astral-tl: unmaintained (informational, no vulnerability). Pulled in by
+    # html-to-markdown-rs <3.22 via kreuzberg. 3.22 drops it but needs Rust
+    # 1.99, above our MSRV 1.94.1. Remove once the MSRV allows >=3.22.
+    "RUSTSEC-2026-0444",
 ]
 
 [licenses]
