@@ -29,6 +29,12 @@ ignore = [
     "RUSTSEC-2026-0545",
     "RUSTSEC-2026-0546",
     "RUSTSEC-2026-0547",
+    # zip 8: ZipStreamReader local-header vs central-directory name mismatch.
+    # lore reads via ZipArchive (central directory), never ZipStreamReader.
+    "RUSTSEC-2026-0548",
+    # chrono: unmaintained (informational). Transitive only (kreuzberg, calamine,
+    # lopdf, rmcp). Remove once those drop chrono or a successor is adopted.
+    "RUSTSEC-2026-0543",
     # calamine 0.36: panic / unbounded allocation in the CFB parser (.xls/.xlsb).
     # Pinned by kreuzberg 4.10.4 (latest), fix needs calamine 0.38. Panics are
     # isolated via tokio::spawn (CONV-ISOLATE), OOM is bounded by
