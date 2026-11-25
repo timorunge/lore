@@ -86,7 +86,7 @@ dirs = "7"
 quick-xml = { version = "0.42", optional = true }
 futures = { version = "0.3", optional = true }
 fd-lock = { version = "4", optional = true }
-notify = { version = "8", optional = true }
+notify = { version = "9", optional = true }
 httpdate = { version = "1", optional = true }
 texting_robots = { version = "0.2", optional = true }
 aws-config = { version = "1", default-features = false, features = ["behavior-version-latest", "default-https-client", "rt-tokio", "credentials-process", "sso"], optional = true }
